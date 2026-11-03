@@ -1,14 +1,28 @@
-from fastapi import APIRouter
-from pydantic import BaseModel
+from typing import Optional
+from fastapi import APIRouter, Query
+from app.core.config import settings
+from app.schemas.health import HealthData, HealthResponse
 
 router = APIRouter()
 
-class HealthResponse(BaseModel):
-    status: str
-    version: str
-    environment: str
 
-@router.get("/health", response_model=HealthResponse)
-async def health():
-    from app.core.config import settings
-    return HealthResponse(status="ok", version=settings.APP_VERSION, environment=settings.ENVIRONMENT)
+@router.get(
+    "/health",
+    response_model=HealthResponse,
+    summary="Versioned API Health Check",
+    description="Returns operational status of the versioned NexOps API v1.",
+)
+async def api_health(
+    echo: Optional[str] = Query(None, max_length=50, description="Optional echo string for validation checks")
+) -> HealthResponse:
+    """Return structured health status for NexOps API v1."""
+    return HealthResponse(
+        success=True,
+        message="NexOps backend is operational",
+        data=HealthData(
+            status="healthy",
+            application=settings.APP_NAME,
+            environment=settings.APP_ENV,
+            version=settings.APP_VERSION,
+        ),
+    )
