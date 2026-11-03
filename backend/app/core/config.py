@@ -46,6 +46,16 @@ class Settings(BaseSettings):
     GROQ_API_KEY: str = ""
     GROQ_MODEL: str = "llama-3.1-8b-instant"
 
+    # Switch Integration (Agent Bridge)
+    SWITCH_ENABLED: bool = False
+    SWITCH_CORE_URL: Union[str, None] = None
+    SWITCH_API_KEY: Union[str, None] = None
+    SWITCH_AGENT_ID: Union[str, None] = None
+    SWITCH_RECONNECT_INITIAL_DELAY: float = 2.0
+    SWITCH_RECONNECT_MAX_DELAY: float = 60.0
+    SWITCH_CONNECTION_TIMEOUT: float = 15.0
+    SWITCH_ROOM_PROJECT_MAPPING: Union[str, dict[str, str]] = Field(default_factory=dict)
+
     @field_validator("ENVIRONMENT", mode="before")
     @classmethod
     def sync_environment(cls, v: str, info) -> str:
@@ -79,6 +89,57 @@ class Settings(BaseSettings):
         if url.startswith("postgresql://") and not url.startswith("postgresql+"):
             return "postgresql+psycopg://" + url[len("postgresql://"):]
         return url
+
+    @property
+    def switch_ws_url(self) -> Union[str, None]:
+        """Convert SWITCH_CORE_URL to WebSocket URL for Agent Bridge connection."""
+        if not self.SWITCH_CORE_URL:
+            return None
+        url = self.SWITCH_CORE_URL.rstrip("/")
+        if url.startswith("https://"):
+            ws_base = "wss://" + url[len("https://"):]
+        elif url.startswith("http://"):
+            ws_base = "ws://" + url[len("http://"):]
+        elif url.startswith("wss://") or url.startswith("ws://"):
+            ws_base = url
+        else:
+            ws_base = f"ws://{url}"
+        return f"{ws_base}/gateway/changes/ws"
+
+    @property
+    def switch_ops_url(self) -> Union[str, None]:
+        """Base URL for Switch HTTP operations."""
+        if not self.SWITCH_CORE_URL:
+            return None
+        return f"{self.SWITCH_CORE_URL.rstrip('/')}/ops"
+
+    @property
+    def room_project_mapping(self) -> dict[str, str]:
+        """Map of Switch room IDs to Project names or UUIDs."""
+        mapping = self.SWITCH_ROOM_PROJECT_MAPPING
+        if isinstance(mapping, dict):
+            return mapping
+        if isinstance(mapping, str):
+            cleaned = mapping.strip()
+            if not cleaned:
+                return {}
+            if cleaned.startswith("{") and cleaned.endswith("}"):
+                import json
+                try:
+                    parsed = json.loads(cleaned)
+                    if isinstance(parsed, dict):
+                        return {str(k): str(v) for k, v in parsed.items()}
+                except Exception:
+                    pass
+            # Parse comma-separated "room_id:project_name,room_2:project_2"
+            result: dict[str, str] = {}
+            for item in cleaned.split(","):
+                if ":" in item:
+                    k, v = item.split(":", 1)
+                    if k.strip() and v.strip():
+                        result[k.strip()] = v.strip()
+            return result
+        return {}
 
 
 @lru_cache

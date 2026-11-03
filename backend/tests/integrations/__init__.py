@@ -1,0 +1,2 @@
+# Switch integration test suite
+

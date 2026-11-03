@@ -109,6 +109,14 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 ### 5. Running Backend Tests
 
+<<<<<<< HEAD
+<<<<<<< HEAD
+Run the full test suite using pytest:
+
+=======
+>>>>>>> 86de97ca2539389ada6d917d29795fa30f43498c
+=======
+>>>>>>> 566363f549f4ebed5ca0cf958b48b822d927ca50
 ```powershell
 pytest -v
 ```
