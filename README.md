@@ -6,9 +6,9 @@ NexOps is an AI-native DevOps platform that unifies incident management, infrast
 
 | Layer | Technology |
 |-------|-----------|
-| Frontend | React 19, TypeScript, Vite 6, Tailwind CSS v4, shadcn/ui |
+| Frontend | React 19, TypeScript 5.8, Vite 6, Tailwind CSS v4, shadcn/ui, TanStack Query, Recharts, Lucide React, Sonner |
 | Backend | FastAPI, Python 3.11, Pydantic v2, Pydantic Settings, SQLAlchemy 2.0 (async), Alembic |
-| AI / Agents | LangChain, LangGraph, Gemini 1.5 Flash / Groq Llama (Phase 2+) |
+| AI / Agents | LangChain, LangGraph, Gemini 1.5 Flash / Groq Llama (Multi-Agent Swarm) |
 | Database | PostgreSQL 16 (Neon cloud or local Docker) |
 | Auth | JWT (python-jose), bcrypt (passlib) |
 
@@ -36,13 +36,18 @@ NexOps/
 │   └── pytest.ini
 ├── frontend/
 │   ├── src/
-│   │   ├── components/      # React components (layout/, ui/, common/)
-│   │   ├── hooks/           # Custom React hooks
-│   │   ├── pages/           # Page-level components
-│   │   ├── services/        # API client (axios)
-│   │   └── types/           # TypeScript interfaces
+│   │   ├── components/      # Common & dashboard components (MetricCard, IncidentOverview, etc.)
+│   │   ├── constants/       # Realistic telemetry, incident & agent demo data
+│   │   ├── hooks/           # Custom React hooks (useHealth, etc.)
+│   │   ├── layouts/         # AppLayout, collapsible Sidebar & TopNavbar
+│   │   ├── pages/           # Command Center, Projects, Incidents, Agents, Audit Logs, Settings
+│   │   ├── services/        # Centralized Axios API client
+│   │   ├── test/            # Vitest & Testing Library test suites
+│   │   └── types/           # Strict TypeScript models
 │   ├── .env.example
-│   └── package.json
+│   ├── package.json
+│   ├── eslint.config.js
+│   └── vite.config.ts
 ├── docs/
 │   ├── architecture/
 │   ├── api/
@@ -58,7 +63,9 @@ NexOps/
 - **Node.js 20+** and npm
 - **PostgreSQL 16** (Neon or local Docker)
 
-## Backend Setup
+---
+
+## Backend Setup (Phase 1)
 
 ### 1. Virtual Environment Activation
 
@@ -86,26 +93,11 @@ python -m pip install -r requirements.txt
 
 ### 3. Environment Configuration
 
-Copy the example configuration file:
-
 ```powershell
 copy .env.example .env
 ```
 
-Review and adjust variables in `backend/.env`:
-
-| Variable | Default | Purpose |
-|----------|---------|---------|
-| `APP_NAME` | `NexOps` | Application display name |
-| `APP_ENV` | `development` | Runtime environment name |
-| `DEBUG` | `true` | Enable verbose debugging and logging |
-| `API_V1_PREFIX` | `/api/v1` | Prefix for version 1 API endpoints |
-| `BACKEND_CORS_ORIGINS` | `http://localhost:5173` | Allowed CORS origins (comma-separated or list) |
-| `LOG_LEVEL` | `INFO` | Application log level (`DEBUG`, `INFO`, `WARNING`, `ERROR`) |
-| `DATABASE_URL` | `postgresql+psycopg://...` | PostgreSQL connection string (future phases) |
-| `SECRET_KEY` | `change-me-in-production` | JWT signing secret key |
-| `GOOGLE_API_KEY` | `""` | Google Gemini API key (future phases) |
-| `GROQ_API_KEY` | `""` | Groq API key (future phases) |
+Review and adjust variables in `backend/.env` (`APP_NAME`, `APP_ENV`, `DEBUG`, `API_V1_PREFIX`, `BACKEND_CORS_ORIGINS`, `LOG_LEVEL`).
 
 ### 4. Running the Backend
 
@@ -116,8 +108,6 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
 ### 5. Running Backend Tests
-
-Run the full test suite using pytest:
 
 ```powershell
 pytest -v
@@ -146,30 +136,70 @@ alembic revision --autogenerate -m "migration_description"
 
 ### 7. Interactive API Documentation & Health Checks
 
-Once the server is running, explore the API at:
 - **Swagger UI:** [http://localhost:8000/docs](http://localhost:8000/docs)
 - **ReDoc:** [http://localhost:8000/redoc](http://localhost:8000/redoc)
 - **OpenAPI Schema:** [http://localhost:8000/openapi.json](http://localhost:8000/openapi.json)
 - **System Health:** [http://localhost:8000/health](http://localhost:8000/health)
 - **Database Health:** [http://localhost:8000/api/v1/health/database](http://localhost:8000/api/v1/health/database)
 
-## Frontend Setup
+---
 
-```bash
+## Frontend Setup (Phase 2)
+
+### 1. Installation
+
+```powershell
 cd frontend
 npm install
+```
 
-# Configure environment
+### 2. Environment Configuration
+
+```powershell
 copy .env.example .env.local
+```
 
-# Run development server
+Default configuration points to `VITE_API_BASE_URL=http://localhost:8000/api/v1`.
+
+### 3. Running Development Server
+
+```powershell
 npm run dev
 ```
 
-The frontend will be available at [http://localhost:5173](http://localhost:5173).
+The Command Center will be accessible at [http://localhost:5173](http://localhost:5173).
 
-## Testing Commands Summary
+### 4. Running Frontend Tests
 
-- **Backend tests:** `pytest -v` (inside `backend/` directory)
-- **Frontend build test:** `npm run build` (inside `frontend/` directory)
-- **Frontend type check:** `npx tsc --noEmit` (inside `frontend/` directory)
+```powershell
+npm test
+```
+
+Runs the 7 Vitest + React Testing Library test suites covering routing, navigation, KPI cards, incident tables, and responsive sidebar.
+
+### 5. Type Checking and Linting
+
+```powershell
+npx tsc --noEmit
+npm run lint
+```
+
+### 6. Production Build
+
+```powershell
+npm run build
+```
+
+---
+
+## Available Application Routes
+
+| Route | Purpose | Key Features |
+|-------|---------|--------------|
+| `/dashboard` (or `/`) | Command Center | KPI metrics, incident velocity chart, active incident table, agent swarm status, activity feed |
+| `/projects` | Monitored Projects | Multi-environment repo cards, health indicators, service counts, search filter |
+| `/incidents` | Incident Queue | Severity & status filters, incident inspection drawer, root-cause hypothesis preview |
+| `/agents` | AI Agent Swarm | 5 specialized agent cards (Incident Manager, Log Analyst, Code Investigator, Fix Agent, Testing Agent) |
+| `/audit-logs` | Audit Trail | Structured immutable event ledger with actor filters and JSON export simulation |
+| `/settings` | System Settings | General preferences, appearance density, notification channels, integration statuses |
+| `*` | 404 Error View | Graceful error boundary with return navigation |
