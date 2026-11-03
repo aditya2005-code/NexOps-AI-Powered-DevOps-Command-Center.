@@ -1,23 +1,53 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { Sidebar } from '@/components/layout/Sidebar'
-import { Dashboard } from '@/pages/Dashboard'
+import { Toaster } from 'sonner'
+import { AppLayout } from '@/layouts/AppLayout'
+import { DashboardPage } from '@/pages/dashboard/DashboardPage'
+import { ProjectsPage } from '@/pages/projects/ProjectsPage'
+import { IncidentsPage } from '@/pages/incidents/IncidentsPage'
+import { AgentsPage } from '@/pages/agents/AgentsPage'
+import { AuditLogsPage } from '@/pages/audit-logs/AuditLogsPage'
+import { SettingsPage } from '@/pages/settings/SettingsPage'
+import { NotFoundPage } from '@/pages/NotFoundPage'
 
-const queryClient = new QueryClient()
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+      retry: 1,
+      staleTime: 30000,
+    },
+  },
+})
 
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
-        <div className="flex h-screen overflow-hidden bg-slate-50">
-          <Sidebar />
-          <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/activity" element={<main className="flex-1 p-8"><h1 className="text-2xl font-bold">Activity</h1><p className="text-slate-500 mt-1">Coming soon.</p></main>} />
-            <Route path="/settings" element={<main className="flex-1 p-8"><h1 className="text-2xl font-bold">Settings</h1><p className="text-slate-500 mt-1">Coming soon.</p></main>} />
-          </Routes>
-        </div>
+        <Routes>
+          <Route element={<AppLayout />}>
+            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/dashboard" element={<DashboardPage />} />
+            <Route path="/projects" element={<ProjectsPage />} />
+            <Route path="/incidents" element={<IncidentsPage />} />
+            <Route path="/agents" element={<AgentsPage />} />
+            <Route path="/audit-logs" element={<AuditLogsPage />} />
+            <Route path="/settings" element={<SettingsPage />} />
+            <Route path="*" element={<NotFoundPage />} />
+          </Route>
+        </Routes>
       </BrowserRouter>
+      <Toaster
+        theme="dark"
+        position="top-right"
+        toastOptions={{
+          style: {
+            background: '#121622',
+            border: '1px solid #1e2436',
+            color: '#e2e8f0',
+          },
+        }}
+      />
     </QueryClientProvider>
   )
 }
