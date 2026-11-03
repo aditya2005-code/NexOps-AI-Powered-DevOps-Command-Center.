@@ -1,7 +1,9 @@
 from fastapi import APIRouter
 from app.api.v1.endpoints.health import router as health_router
 from app.api.v1.endpoints.database import router as database_router
+from app.integrations.switch.router import router as switch_router
 
 router = APIRouter()
 router.include_router(health_router, tags=["Health"])
 router.include_router(database_router, tags=["Database"])
+router.include_router(switch_router, tags=["Integrations"])

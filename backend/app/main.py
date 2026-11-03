@@ -17,7 +17,19 @@ from app.schemas.health import HealthData, HealthResponse
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Application lifecycle management."""
     setup_logging(settings.LOG_LEVEL)
+
+    # Initialize Switch integration listener if enabled
+    switch_listener = None
+    if settings.SWITCH_ENABLED:
+        from app.integrations.switch.listener import get_switch_listener
+        switch_listener = get_switch_listener()
+        await switch_listener.start()
+
     yield
+
+    # Clean shutdown of Switch integration
+    if switch_listener is not None:
+        await switch_listener.stop()
 
 
 def create_app() -> FastAPI:
