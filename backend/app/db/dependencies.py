@@ -1,0 +1,16 @@
+from typing import Generator
+from sqlalchemy.orm import Session
+from app.db.session import SessionLocal
+
+
+def get_db() -> Generator[Session, None, None]:
+    """FastAPI dependency providing a transactional database session."""
+    db = SessionLocal()
+    try:
+        yield db
+    except Exception:
+        db.rollback()
+        raise
+    finally:
+        db.close()
+

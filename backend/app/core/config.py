@@ -26,8 +26,13 @@ class Settings(BaseSettings):
     # Logging
     LOG_LEVEL: str = "INFO"
 
-    # Database (Neon PostgreSQL) - to be connected in future phases
+    # Database (Neon PostgreSQL)
     DATABASE_URL: str = "postgresql+psycopg://user:password@localhost:5432/nexops"
+    DATABASE_ECHO: bool = False
+    DATABASE_POOL_SIZE: int = 5
+    DATABASE_MAX_OVERFLOW: int = 10
+    DATABASE_POOL_TIMEOUT: int = 30
+    DATABASE_POOL_RECYCLE: int = 1800
 
     # JWT Security - to be fully configured in future phases
     SECRET_KEY: str = "change-me-in-production"
@@ -55,7 +60,6 @@ class Settings(BaseSettings):
         if isinstance(origins, str):
             cleaned = origins.strip()
             if cleaned.startswith("[") and cleaned.endswith("]"):
-                # Handle JSON list string format e.g. ["http://localhost:5173"]
                 import json
                 try:
                     parsed = json.loads(cleaned)
@@ -65,6 +69,16 @@ class Settings(BaseSettings):
                     pass
             return [o.strip() for o in cleaned.split(",") if o.strip()]
         return self.ALLOWED_ORIGINS
+
+    @property
+    def sqlalchemy_database_url(self) -> str:
+        """Ensure psycopg3 driver prefix for PostgreSQL URLs."""
+        url = self.DATABASE_URL
+        if url.startswith("postgres://"):
+            return "postgresql+psycopg://" + url[len("postgres://"):]
+        if url.startswith("postgresql://") and not url.startswith("postgresql+"):
+            return "postgresql+psycopg://" + url[len("postgresql://"):]
+        return url
 
 
 @lru_cache
