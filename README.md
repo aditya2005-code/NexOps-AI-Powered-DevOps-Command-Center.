@@ -7,8 +7,8 @@ NexOps is an AI-native DevOps platform that unifies incident management, infrast
 | Layer | Technology |
 |-------|-----------|
 | Frontend | React 19, TypeScript, Vite 6, Tailwind CSS v4, shadcn/ui |
-| Backend | FastAPI, Python 3.11, SQLAlchemy (async), Alembic |
-| AI / Agents | LangChain, LangGraph, Gemini 1.5 Flash / Groq Llama |
+| Backend | FastAPI, Python 3.11, Pydantic v2, Pydantic Settings, SQLAlchemy 2.0 (async), Alembic |
+| AI / Agents | LangChain, LangGraph, Gemini 1.5 Flash / Groq Llama (Phase 2+) |
 | Database | PostgreSQL 16 (Neon cloud or local Docker) |
 | Auth | JWT (python-jose), bcrypt (passlib) |
 
@@ -18,14 +18,16 @@ NexOps is an AI-native DevOps platform that unifies incident management, infrast
 NexOps/
 ├── backend/
 │   ├── app/
-│   │   ├── api/v1/          # FastAPI routers and endpoints
+│   │   ├── api/v1/          # Versioned API routes & endpoints
+│   │   │   ├── router.py
+│   │   │   └── endpoints/health.py
 │   │   ├── agents/          # LangChain/LangGraph agent workflows
-│   │   ├── core/            # Config, logging, security
+│   │   ├── core/            # Config, logging, security, centralized exceptions
 │   │   ├── db/              # SQLAlchemy session and base
 │   │   ├── integrations/    # Third-party adapters (Switch, etc.)
 │   │   ├── models/          # ORM models
 │   │   ├── repositories/    # Data access layer
-│   │   ├── schemas/         # Pydantic request/response models
+│   │   ├── schemas/         # Pydantic request/response & common envelopes
 │   │   └── services/        # Business logic
 │   ├── alembic/             # Database migrations
 │   ├── tests/               # pytest test suite
@@ -46,35 +48,87 @@ NexOps/
 │   ├── api/
 │   └── development/
 ├── docker-compose.yml       # Local PostgreSQL
+├── DEVELOPMENT_PROGRESS.md  # Project progress tracker
 └── README.md
 ```
 
 ## Prerequisites
 
-- Python 3.11+
-- Node.js 20+
-- PostgreSQL 16 (or Docker for local dev)
+- **Python 3.11+** (Windows 64-bit or Unix)
+- **Node.js 20+** and npm
+- **PostgreSQL 16** (Neon or local Docker)
 
 ## Backend Setup
 
+### 1. Virtual Environment Activation
+
+The project uses the existing dedicated virtual environment located at `backend/.venv`.
+
+**Windows PowerShell:**
+```powershell
+cd backend
+.\.venv\Scripts\Activate.ps1
+```
+
+**Linux / macOS:**
 ```bash
 cd backend
-
-# Create and activate virtual environment (already done if .venv exists)
-python -m venv .venv
-.venv\Scripts\activate       # Windows
-# source .venv/bin/activate  # Linux/Mac
-
-# Install dependencies
-python -m pip install -r requirements.txt
-
-# Configure environment
-copy .env.example .env
-# Edit .env and set DATABASE_URL, SECRET_KEY, GOOGLE_API_KEY, etc.
-
-# Run database migrations
-python -m alembic upgrade head
+source .venv/bin/activate
 ```
+
+### 2. Dependency Installation
+
+Install dependencies using the virtual environment's pip:
+
+```powershell
+python -m pip install -r requirements.txt
+```
+
+### 3. Environment Configuration
+
+Copy the example configuration file:
+
+```powershell
+copy .env.example .env
+```
+
+Review and adjust variables in `backend/.env`:
+
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `APP_NAME` | `NexOps` | Application display name |
+| `APP_ENV` | `development` | Runtime environment name |
+| `DEBUG` | `true` | Enable verbose debugging and logging |
+| `API_V1_PREFIX` | `/api/v1` | Prefix for version 1 API endpoints |
+| `BACKEND_CORS_ORIGINS` | `http://localhost:5173` | Allowed CORS origins (comma-separated or list) |
+| `LOG_LEVEL` | `INFO` | Application log level (`DEBUG`, `INFO`, `WARNING`, `ERROR`) |
+| `DATABASE_URL` | `postgresql+psycopg://...` | PostgreSQL connection string (future phases) |
+| `SECRET_KEY` | `change-me-in-production` | JWT signing secret key |
+| `GOOGLE_API_KEY` | `""` | Google Gemini API key (future phases) |
+| `GROQ_API_KEY` | `""` | Groq API key (future phases) |
+
+### 4. Running the Backend
+
+Start the development server using Uvicorn:
+
+```powershell
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+### 5. Running Backend Tests
+
+Run the test suite using pytest:
+
+```powershell
+pytest -v
+```
+
+### 6. Interactive API Documentation
+
+Once the server is running, explore the API at:
+- **Swagger UI:** [http://localhost:8000/docs](http://localhost:8000/docs)
+- **ReDoc:** [http://localhost:8000/redoc](http://localhost:8000/redoc)
+- **OpenAPI Schema:** [http://localhost:8000/openapi.json](http://localhost:8000/openapi.json)
 
 ## Frontend Setup
 
@@ -84,81 +138,15 @@ npm install
 
 # Configure environment
 copy .env.example .env.local
-# Edit .env.local and set VITE_API_BASE_URL if needed
-```
 
-## Environment Variables
-
-### Backend (`backend/.env`)
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `DATABASE_URL` | `postgresql+psycopg://user:password@localhost:5432/nexops` | PostgreSQL connection string |
-| `SECRET_KEY` | `change-me-in-production` | JWT signing key — **must change in prod** |
-| `GOOGLE_API_KEY` | `` | Gemini API key |
-| `GROQ_API_KEY` | `` | Groq API key |
-| `LLM_DEFAULT_PROVIDER` | `gemini` | `gemini` or `groq` |
-| `DEBUG` | `false` | Enable debug logging and SQLAlchemy echo |
-| `ENVIRONMENT` | `development` | Environment name |
-
-### Frontend (`frontend/.env.local`)
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `VITE_API_BASE_URL` | `http://localhost:8000/api/v1` | Backend API base URL |
-
-## Start Commands
-
-### Backend
-
-```bash
-cd backend
-.venv\Scripts\uvicorn app.main:app --reload --port 8000
-```
-
-### Frontend
-
-```bash
-cd frontend
+# Run development server
 npm run dev
 ```
 
-- Frontend: http://localhost:5173
-- Backend API: http://localhost:8000
-- Swagger docs: http://localhost:8000/docs
-- ReDoc: http://localhost:8000/redoc
+The frontend will be available at [http://localhost:5173](http://localhost:5173).
 
-## Testing
+## Testing Commands Summary
 
-### Backend
-
-```bash
-cd backend
-.venv\Scripts\pytest tests/ -v
-```
-
-### Frontend
-
-```bash
-cd frontend
-npm run build   # type-check + build
-```
-
-## Local Database (Docker)
-
-```bash
-docker-compose up db -d
-```
-
-Then set `DATABASE_URL=postgresql+psycopg://nexops:nexops@localhost:5432/nexops` in `backend/.env`.
-
-## API Documentation
-
-Interactive docs available at http://localhost:8000/docs when backend is running.
-
-## Development Notes
-
-- All backend Python commands must use `.venv\Scripts\python.exe` (Windows) or `.venv/bin/python` (Linux/Mac)
-- Migrations: run `alembic upgrade head` after pulling new migration files
-- Agents: LLM provider is selected via `LLM_DEFAULT_PROVIDER` env var; API key must also be set
-- Switch integration: placeholder only — see `backend/app/integrations/switch/README.md` before implementing
+- **Backend tests:** `pytest -v` (inside `backend/` directory)
+- **Frontend build test:** `npm run build` (inside `frontend/` directory)
+- **Frontend type check:** `npx tsc --noEmit` (inside `frontend/` directory)

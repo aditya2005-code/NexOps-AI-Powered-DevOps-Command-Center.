@@ -1,31 +1,75 @@
+from functools import lru_cache
+from typing import Literal, Union
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from typing import Literal
+
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
 
-    # App
+    # Application Information
     APP_NAME: str = "NexOps"
-    APP_VERSION: str = "0.1.0"
-    DEBUG: bool = False
+    APP_ENV: str = "development"
     ENVIRONMENT: str = "development"
+    APP_VERSION: str = "0.1.0"
+    DEBUG: bool = True
 
-    # CORS
+    # Routing & CORS
+    API_V1_PREFIX: str = "/api/v1"
+    BACKEND_CORS_ORIGINS: Union[str, list[str]] = ["http://localhost:5173"]
     ALLOWED_ORIGINS: list[str] = ["http://localhost:5173"]
 
-    # Database
+    # Logging
+    LOG_LEVEL: str = "INFO"
+
+    # Database (Neon PostgreSQL) - to be connected in future phases
     DATABASE_URL: str = "postgresql+psycopg://user:password@localhost:5432/nexops"
 
-    # JWT
+    # JWT Security - to be fully configured in future phases
     SECRET_KEY: str = "change-me-in-production"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 
-    # LLM
+    # LLM Settings
     LLM_DEFAULT_PROVIDER: Literal["gemini", "groq"] = "gemini"
     GOOGLE_API_KEY: str = ""
     GEMINI_MODEL: str = "gemini-1.5-flash"
     GROQ_API_KEY: str = ""
     GROQ_MODEL: str = "llama-3.1-8b-instant"
 
-settings = Settings()
+    @field_validator("ENVIRONMENT", mode="before")
+    @classmethod
+    def sync_environment(cls, v: str, info) -> str:
+        # Default to APP_ENV if not explicitly set
+        return v or "development"
+
+    @property
+    def cors_origins(self) -> list[str]:
+        origins = self.BACKEND_CORS_ORIGINS
+        if isinstance(origins, list):
+            return origins
+        if isinstance(origins, str):
+            cleaned = origins.strip()
+            if cleaned.startswith("[") and cleaned.endswith("]"):
+                # Handle JSON list string format e.g. ["http://localhost:5173"]
+                import json
+                try:
+                    parsed = json.loads(cleaned)
+                    if isinstance(parsed, list):
+                        return [str(item) for item in parsed]
+                except Exception:
+                    pass
+            return [o.strip() for o in cleaned.split(",") if o.strip()]
+        return self.ALLOWED_ORIGINS
+
+
+@lru_cache
+def get_settings() -> Settings:
+    return Settings()
+
+
+settings = get_settings()
