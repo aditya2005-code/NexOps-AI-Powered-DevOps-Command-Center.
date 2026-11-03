@@ -1,4 +1,5 @@
 import enum
+import uuid
 from datetime import datetime
 from typing import Any, Dict, Optional
 from pydantic import BaseModel, Field
@@ -50,4 +51,15 @@ class SwitchOperationResponse(BaseModel):
     operation: str
     data: Optional[Dict[str, Any]] = None
     error: Optional[str] = None
+
+
+class SwitchIntakeResult(BaseModel):
+    """Result of processing an inbound Switch room message for incident intake."""
+    status: str = Field(..., description="Intake outcome: created, duplicate, rejected_unmapped_room, persistence_failure, invalid_event")
+    incident_id: Optional[uuid.UUID] = None
+    project_id: Optional[uuid.UUID] = None
+    room_id: Optional[str] = None
+    message_id: Optional[str] = None
+    acknowledgement_sent: bool = False
+    detail: Optional[str] = None
 

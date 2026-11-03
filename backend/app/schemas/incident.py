@@ -11,6 +11,7 @@ class IncidentBase(BaseModel):
     severity: IncidentSeverity = IncidentSeverity.MEDIUM
     status: IncidentStatus = IncidentStatus.OPEN
     source: str = Field(default="telemetry", max_length=100)
+    source_id: Optional[str] = Field(None, max_length=255)
     root_cause_summary: Optional[str] = None
 
 

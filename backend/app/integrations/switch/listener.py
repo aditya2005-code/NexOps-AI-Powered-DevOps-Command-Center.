@@ -20,18 +20,23 @@ logger = logging.getLogger("nexops.switch.listener")
 class SwitchListener:
     """Asynchronous WebSocket connection manager for Switch Agent Bridge."""
 
-    def __init__(self) -> None:
+    def __init__(self, intake_service=None) -> None:
         self.state: SwitchConnectionState = SwitchConnectionState.DISABLED
         self.connected: bool = False
         self.last_connected_at: Optional[datetime] = None
         self.last_error_at: Optional[datetime] = None
         self.last_error: Optional[str] = None
+        self.intake_service = intake_service
 
         self._task: Optional[asyncio.Task] = None
         self._stop_event: asyncio.Event = asyncio.Event()
         self._current_ws: Optional[Any] = None
 
         self._refresh_initial_state()
+
+    def set_intake_service(self, service) -> None:
+        """Attach or update the incident intake service."""
+        self.intake_service = service
 
     def _refresh_initial_state(self) -> None:
         """Update state based on current settings."""
@@ -145,7 +150,7 @@ class SwitchListener:
                     while not self._stop_event.is_set():
                         try:
                             message = await ws.recv()
-                            self._handle_raw_message(message)
+                            await self._dispatch_message(message)
                         except ConnectionClosed as exc:
                             logger.warning("Switch WebSocket closed: code=%s, reason=%s", exc.code, exc.reason)
                             break
@@ -175,9 +180,31 @@ class SwitchListener:
                     settings.SWITCH_RECONNECT_MAX_DELAY,
                 )
 
+    async def _dispatch_message(self, raw_message: str | bytes) -> None:
+        """Parse incoming protocol frames and forward to incident intake service."""
+        try:
+            if isinstance(raw_message, bytes):
+                raw_message = raw_message.decode("utf-8")
+            payload = json.loads(raw_message)
+            event = SwitchInboundEvent(**payload)
+            logger.info(
+                "Received Switch event: type=%s, room_id=%s, message_id=%s",
+                event.event_type,
+                event.room_id,
+                event.message_id,
+            )
+            if self.intake_service is not None:
+                await self.intake_service.process_inbound_event(event)
+        except json.JSONDecodeError:
+            logger.warning("Received invalid non-JSON frame from Switch Agent Bridge")
+        except Exception as exc:
+            logger.warning("Failed to process Switch inbound frame: %s", type(exc).__name__)
+
     def _handle_raw_message(self, raw_message: str | bytes) -> None:
         """Validate and log incoming protocol frames without logging sensitive content."""
         try:
+            if isinstance(raw_message, bytes):
+                raw_message = raw_message.decode("utf-8")
             payload = json.loads(raw_message)
             event = SwitchInboundEvent(**payload)
             # Log only safe metadata

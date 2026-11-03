@@ -1,5 +1,6 @@
 from app.integrations.switch.client import SwitchClient
 from app.integrations.switch.listener import SwitchListener, get_switch_listener
+from app.integrations.switch.service import SwitchIntakeService
 from app.integrations.switch.router import router as switch_router
 from app.integrations.switch.schemas import (
     SwitchConnectionState,
@@ -7,6 +8,7 @@ from app.integrations.switch.schemas import (
     SwitchInboundEvent,
     SwitchSendMessageRequest,
     SwitchOperationResponse,
+    SwitchIntakeResult,
 )
 from app.integrations.switch.exceptions import (
     SwitchIntegrationError,
@@ -20,12 +22,14 @@ __all__ = [
     "SwitchClient",
     "SwitchListener",
     "get_switch_listener",
+    "SwitchIntakeService",
     "switch_router",
     "SwitchConnectionState",
     "SwitchStatusResponse",
     "SwitchInboundEvent",
     "SwitchSendMessageRequest",
     "SwitchOperationResponse",
+    "SwitchIntakeResult",
     "SwitchIntegrationError",
     "SwitchConnectionError",
     "SwitchAuthenticationError",

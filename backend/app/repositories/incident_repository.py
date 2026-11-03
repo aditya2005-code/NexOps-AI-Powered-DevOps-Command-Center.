@@ -19,6 +19,7 @@ class IncidentRepository:
             severity=incident_in.severity,
             status=incident_in.status,
             source=incident_in.source,
+            source_id=incident_in.source_id,
             root_cause_summary=incident_in.root_cause_summary,
         )
         db.add(incident)
@@ -28,6 +29,11 @@ class IncidentRepository:
     @staticmethod
     def get_by_id(db: Session, incident_id: uuid.UUID) -> Optional[Incident]:
         statement = select(Incident).where(Incident.id == incident_id)
+        return db.scalar(statement)
+
+    @staticmethod
+    def get_by_source_id(db: Session, source_id: str) -> Optional[Incident]:
+        statement = select(Incident).where(Incident.source_id == source_id)
         return db.scalar(statement)
 
     @staticmethod

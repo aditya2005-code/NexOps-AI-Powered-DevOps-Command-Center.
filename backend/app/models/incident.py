@@ -64,6 +64,12 @@ class Incident(Base):
         default="telemetry",
         nullable=False,
     )
+    source_id: Mapped[Optional[str]] = mapped_column(
+        String(255),
+        unique=True,
+        index=True,
+        nullable=True,
+    )
     root_cause_summary: Mapped[Optional[str]] = mapped_column(
         Text,
         nullable=True,

@@ -22,7 +22,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     switch_listener = None
     if settings.SWITCH_ENABLED:
         from app.integrations.switch.listener import get_switch_listener
+        from app.integrations.switch.service import SwitchIntakeService
         switch_listener = get_switch_listener()
+        switch_listener.set_intake_service(SwitchIntakeService())
         await switch_listener.start()
 
     yield
