@@ -113,11 +113,34 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 pytest -v
 ```
 
-### 6. Interactive API Documentation
+Or run the isolated database test suite:
+
+```powershell
+pytest tests/db/ -v
+```
+
+### 6. Database Migrations (Alembic)
+
+Manage database schema revisions using Alembic:
+
+```powershell
+# Apply all pending migrations to head
+alembic upgrade head
+
+# Rollback one migration revision
+alembic downgrade -1
+
+# Generate a new autodetected migration
+alembic revision --autogenerate -m "migration_description"
+```
+
+### 7. Interactive API Documentation & Health Checks
 
 - **Swagger UI:** [http://localhost:8000/docs](http://localhost:8000/docs)
 - **ReDoc:** [http://localhost:8000/redoc](http://localhost:8000/redoc)
 - **OpenAPI Schema:** [http://localhost:8000/openapi.json](http://localhost:8000/openapi.json)
+- **System Health:** [http://localhost:8000/health](http://localhost:8000/health)
+- **Database Health:** [http://localhost:8000/api/v1/health/database](http://localhost:8000/api/v1/health/database)
 
 ---
 
