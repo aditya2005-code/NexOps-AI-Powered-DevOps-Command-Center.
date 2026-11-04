@@ -8,6 +8,9 @@ from app.models.incident import IncidentSeverity, IncidentStatus
 from app.repositories import IncidentRepository
 from app.schemas.common import BaseResponse
 from app.schemas.incident import IncidentEventResponse, IncidentResponse
+from app.agents.runtime import IncidentInvestigationExecutor
+from app.agents.schemas.investigation import IncidentInvestigationResponse
+from app.agents.llm.exceptions import LLMConfigurationError
 
 router = APIRouter()
 
@@ -118,4 +121,49 @@ def list_incident_events(
         message="Incident events retrieved successfully",
         data=[IncidentEventResponse.model_validate(ev) for ev in events],
     )
+
+
+@router.post(
+    "/incidents/{incident_id}/investigate",
+    response_model=BaseResponse[IncidentInvestigationResponse],
+    summary="Trigger Incident AI Investigation",
+    description="Executes the LangGraph incident investigation workflow using the configured LLM provider.",
+)
+def trigger_incident_investigation(
+    incident_id: uuid.UUID,
+    provider: Optional[str] = Query(None, description="Optional LLM provider override ('gemini' or 'groq')"),
+    model: Optional[str] = Query(None, description="Optional LLM model override"),
+    db: Session = Depends(get_db),
+) -> BaseResponse[IncidentInvestigationResponse]:
+    """Execute AI investigation against an existing incident."""
+    incident = IncidentRepository.get_by_id(db, incident_id)
+    if incident is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Incident with ID '{incident_id}' not found",
+        )
+
+    try:
+        investigation_response = IncidentInvestigationExecutor.execute(
+            db=db,
+            incident_id=incident_id,
+            provider=provider,
+            model=model,
+        )
+        return BaseResponse(
+            success=True,
+            message="Incident investigation completed successfully",
+            data=investigation_response,
+        )
+    except LLMConfigurationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Investigation workflow failed: {str(exc)}",
+        )
+
 

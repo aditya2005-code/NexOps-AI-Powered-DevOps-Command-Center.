@@ -1,5 +1,6 @@
 from functools import lru_cache
-from typing import Literal, Union
+from pathlib import Path
+from typing import Literal, Optional, Union
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -48,8 +49,13 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 
     # LLM Settings
+    LLM_PROVIDER: Optional[str] = None
     LLM_DEFAULT_PROVIDER: Literal["gemini", "groq"] = "gemini"
+    LLM_MODEL: Optional[str] = None
+    LLM_TEMPERATURE: float = 0.2
+    LLM_MAX_TOKENS: Optional[int] = 2048
     GOOGLE_API_KEY: str = ""
+    GEMINI_API_KEY: Optional[str] = None
     GEMINI_MODEL: str = "gemini-1.5-flash"
     GROQ_API_KEY: str = ""
     GROQ_MODEL: str = "llama-3.1-8b-instant"
@@ -64,11 +70,29 @@ class Settings(BaseSettings):
     SWITCH_CONNECTION_TIMEOUT: float = 15.0
     SWITCH_ROOM_PROJECT_MAPPING: Union[str, dict[str, str]] = Field(default_factory=dict)
 
+    # Project Workspaces for Safe Source-Code Investigation
+    PROJECT_WORKSPACES_ROOT: Optional[str] = None
+    PROJECT_WORKSPACE_MAPPING: Union[str, dict[str, str]] = Field(default_factory=dict)
+
     @field_validator("ENVIRONMENT", mode="before")
     @classmethod
     def sync_environment(cls, v: str, info) -> str:
         # Default to APP_ENV if not explicitly set
         return v or "development"
+
+    @property
+    def effective_llm_provider(self) -> str:
+        return (self.LLM_PROVIDER or self.LLM_DEFAULT_PROVIDER or "gemini").lower().strip()
+
+    @property
+    def effective_gemini_api_key(self) -> Optional[str]:
+        key = self.GEMINI_API_KEY or self.GOOGLE_API_KEY
+        return key.strip() if key and key.strip() else None
+
+    @property
+    def effective_groq_api_key(self) -> Optional[str]:
+        key = self.GROQ_API_KEY
+        return key.strip() if key and key.strip() else None
 
     @property
     def cors_origins(self) -> list[str]:
@@ -148,6 +172,53 @@ class Settings(BaseSettings):
                         result[k.strip()] = v.strip()
             return result
         return {}
+
+    @property
+    def project_workspace_mapping(self) -> dict[str, str]:
+        """Map of project IDs or names to absolute workspace paths on disk."""
+        mapping = self.PROJECT_WORKSPACE_MAPPING
+        if isinstance(mapping, dict):
+            return mapping
+        if isinstance(mapping, str):
+            cleaned = mapping.strip()
+            if not cleaned:
+                return {}
+            if cleaned.startswith("{") and cleaned.endswith("}"):
+                import json
+                try:
+                    parsed = json.loads(cleaned)
+                    if isinstance(parsed, dict):
+                        return {str(k): str(v) for k, v in parsed.items()}
+                except Exception:
+                    pass
+            result: dict[str, str] = {}
+            for pair in cleaned.split(","):
+                if "=" in pair:
+                    k, v = pair.split("=", 1)
+                    if k.strip() and v.strip():
+                        result[k.strip()] = v.strip()
+                elif ":" in pair:
+                    k, v = pair.split(":", 1)
+                    if k.strip() and v.strip():
+                        result[k.strip()] = v.strip()
+            return result
+        return {}
+
+    def get_project_workspace_path(self, project_id_or_name: Optional[str]) -> Optional[Path]:
+        """Safely resolve configured workspace path for a project, if defined."""
+        if not project_id_or_name:
+            return None
+        target = self.project_workspace_mapping.get(str(project_id_or_name))
+        if target:
+            p = Path(target)
+            if p.is_dir():
+                return p.resolve()
+        if self.PROJECT_WORKSPACES_ROOT:
+            candidate = Path(self.PROJECT_WORKSPACES_ROOT) / str(project_id_or_name)
+            if candidate.is_dir():
+                return candidate.resolve()
+        return None
+
 
 
 @lru_cache

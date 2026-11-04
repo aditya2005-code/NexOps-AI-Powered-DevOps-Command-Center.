@@ -1,17 +1,18 @@
-# LLM provider abstraction — instantiates the configured provider without making calls.
-# shortcut: single model per provider, no per-task override; add when agents need different models
-from app.core.config import settings
+from typing import Optional
+from langchain_core.language_models.chat_models import BaseChatModel
+from app.agents.llm.provider_factory import LLMProviderFactory
 
-def get_llm():
-    """Return configured LLM instance. Raises if API key missing."""
-    if settings.LLM_DEFAULT_PROVIDER == "gemini":
-        from langchain_google_genai import ChatGoogleGenerativeAI
-        if not settings.GOOGLE_API_KEY:
-            raise ValueError("GOOGLE_API_KEY not set")
-        return ChatGoogleGenerativeAI(model=settings.GEMINI_MODEL, google_api_key=settings.GOOGLE_API_KEY)
-    elif settings.LLM_DEFAULT_PROVIDER == "groq":
-        from langchain_groq import ChatGroq
-        if not settings.GROQ_API_KEY:
-            raise ValueError("GROQ_API_KEY not set")
-        return ChatGroq(model=settings.GROQ_MODEL, groq_api_key=settings.GROQ_API_KEY)
-    raise ValueError(f"Unknown provider: {settings.LLM_DEFAULT_PROVIDER}")
+
+def get_llm(
+    provider: Optional[str] = None,
+    model: Optional[str] = None,
+    temperature: Optional[float] = None,
+    max_tokens: Optional[int] = None,
+) -> BaseChatModel:
+    """Return configured LLM instance. Raises LLMConfigurationError if missing credentials."""
+    return LLMProviderFactory.create_llm(
+        provider=provider,
+        model=model,
+        temperature=temperature,
+        max_tokens=max_tokens,
+    )

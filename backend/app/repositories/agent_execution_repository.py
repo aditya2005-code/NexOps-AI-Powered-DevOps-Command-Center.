@@ -1,8 +1,9 @@
 import uuid
-from typing import List, Optional
+from datetime import datetime, timezone
+from typing import Any, Dict, List, Optional
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-from app.models.agent_execution import AgentExecution
+from app.models.agent_execution import AgentExecution, AgentExecutionStatus
 from app.schemas.agent_execution import AgentExecutionCreate
 
 
@@ -33,4 +34,27 @@ class AgentExecutionRepository:
             .order_by(AgentExecution.started_at.desc())
         )
         return list(db.scalars(statement).all())
+
+    @staticmethod
+    def update_status(
+        db: Session,
+        execution: AgentExecution,
+        status: AgentExecutionStatus,
+        output_data: Optional[Dict[str, Any]] = None,
+        error_summary: Optional[str] = None,
+    ) -> AgentExecution:
+        execution.status = status
+        if output_data is not None:
+            execution.output_data = output_data
+        if error_summary is not None:
+            execution.error_summary = error_summary
+        if status in (
+            AgentExecutionStatus.COMPLETED,
+            AgentExecutionStatus.FAILED,
+            AgentExecutionStatus.CANCELLED,
+        ):
+            execution.completed_at = datetime.now(timezone.utc)
+        db.flush()
+        return execution
+
 
