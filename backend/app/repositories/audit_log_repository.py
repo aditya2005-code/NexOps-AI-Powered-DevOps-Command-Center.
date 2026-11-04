@@ -23,6 +23,8 @@ class AuditLogRepository:
         db.flush()
         return log
 
+    create = append
+
     @staticmethod
     def list(db: Session, skip: int = 0, limit: int = 100) -> List[AuditLog]:
         statement = select(AuditLog).offset(skip).limit(limit).order_by(AuditLog.created_at.desc())

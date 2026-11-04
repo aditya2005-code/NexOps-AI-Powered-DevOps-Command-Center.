@@ -1,5 +1,5 @@
 from functools import lru_cache
-from typing import Literal, Union
+from typing import Literal, Optional, Union
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -48,8 +48,13 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 
     # LLM Settings
+    LLM_PROVIDER: Optional[str] = None
     LLM_DEFAULT_PROVIDER: Literal["gemini", "groq"] = "gemini"
+    LLM_MODEL: Optional[str] = None
+    LLM_TEMPERATURE: float = 0.2
+    LLM_MAX_TOKENS: Optional[int] = 2048
     GOOGLE_API_KEY: str = ""
+    GEMINI_API_KEY: Optional[str] = None
     GEMINI_MODEL: str = "gemini-1.5-flash"
     GROQ_API_KEY: str = ""
     GROQ_MODEL: str = "llama-3.1-8b-instant"
@@ -69,6 +74,20 @@ class Settings(BaseSettings):
     def sync_environment(cls, v: str, info) -> str:
         # Default to APP_ENV if not explicitly set
         return v or "development"
+
+    @property
+    def effective_llm_provider(self) -> str:
+        return (self.LLM_PROVIDER or self.LLM_DEFAULT_PROVIDER or "gemini").lower().strip()
+
+    @property
+    def effective_gemini_api_key(self) -> Optional[str]:
+        key = self.GEMINI_API_KEY or self.GOOGLE_API_KEY
+        return key.strip() if key and key.strip() else None
+
+    @property
+    def effective_groq_api_key(self) -> Optional[str]:
+        key = self.GROQ_API_KEY
+        return key.strip() if key and key.strip() else None
 
     @property
     def cors_origins(self) -> list[str]:

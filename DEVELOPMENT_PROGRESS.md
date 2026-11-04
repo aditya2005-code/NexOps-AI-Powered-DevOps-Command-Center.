@@ -18,8 +18,58 @@
 | **Phase 4.2** | Backend Switch Integration Foundation (Protocol Client, Listener, Status) | ✅ Completed | 2026-11-03 |
 | **Phase 4.3** | Bidirectional Messaging & Incident Intake | ✅ Completed | 2026-11-03 |
 | **Phase 4.4** | Frontend Switch Integration, E2E Testing & Documentation | ✅ Completed | 2026-11-03 |
-| **Phase 5** | Authentication & Security (JWT, RBAC) | ⏳ Next | Planned |
-| **Phase 6** | AI Agent System (LangChain, LangGraph Multi-Agent Workflows) | ⏳ Pending | Planned |
+| **Phase 5.1** | AI Agent Runtime & LangGraph Foundation (Gemini/Groq, Incident Investigation) | ✅ Completed | 2026-11-04 |
+| **Phase 5.2** | Automated Root-Cause Analysis & Dynamic Diagnostics | ⏳ Next | Planned |
+| **Phase 6** | Remediation Planning, Human Approval Gates & Verification | ⏳ Pending | Planned |
+
+---
+
+## Phase 5.1: AI Agent Runtime and LangGraph Foundation — Detailed Report
+
+### 1. Objectives Completed
+- **Modular Provider-Agnostic LLM Architecture:**
+  - Designed and implemented `LLMProviderFactory` in `backend/app/agents/llm/provider_factory.py`.
+  - Supports dual primary inference providers: **Google Gemini** (`ChatGoogleGenerativeAI` via `langchain-google-genai`) and **Groq** (`ChatGroq` via `langchain-groq`).
+  - Implemented lazy client initialization, strict configuration validation, and API key presence checks.
+  - Implemented secure diagnostics returning active provider, model, temperature, and safe masked credential status (`*** configured` / `missing`).
+  - Added custom structured exception hierarchy (`LLMError`, `LLMConfigurationError`, `LLMAuthenticationError`, `LLMProviderError`).
+- **Read-Only Grounded Investigation Schemas & State:**
+  - Defined `InvestigationResult` schema in `backend/app/agents/schemas/investigation.py` enforcing structured analytical grounding: `incident_summary`, `observed_facts`, `hypotheses`, `supporting_evidence`, `confidence_score` (0.0 to 1.0), `recommended_diagnostic_steps`, `recommended_next_actions`, and `missing_information`.
+  - Defined `InvestigationState` in `backend/app/agents/state/investigation_state.py` capturing incident context, formatted prompt, raw/parsed model output, confidence metrics, and execution metadata.
+  - Defined `IncidentInvestigationResponse` envelope for API output.
+- **Safety Boundary & Injection-Hardened Prompting:**
+  - Developed `SYSTEM_PROMPT` in `backend/app/agents/prompts/incident_investigation.py` strictly enforcing read-only analysis.
+  - Established a clear prompt boundary: incident titles, descriptions, and Switch room events are treated strictly as untrusted, passive telemetry evidence and never as procedural instructions.
+  - Mandated that unknown causes are explicitly marked as missing information rather than hallucinated facts.
+- **Stateful LangGraph Workflow:**
+  - Built a 3-node sequential StateGraph (`create_investigation_graph`):
+    - `prepare_context`: Assembles incident metadata, project context, and chronological event stream bounded to 20 recent events.
+    - `investigate`: Invokes the LLM using `.with_structured_output(InvestigationResult)` for schema conformity.
+    - `validate_and_format`: Validates structured output fields, sets confidence scores, and produces safe fallback analysis if parsing encounters issues.
+  - Flow: `START -> prepare_context -> investigate -> validate_and_format -> END`.
+- **Runtime Execution & Database Persistence:**
+  - Implemented `IncidentInvestigationExecutor.execute()` in `backend/app/agents/runtime/executor.py`.
+  - Persists full execution lifecycle into PostgreSQL `agent_executions` table (`RUNNING` -> `COMPLETED` / `FAILED`), recording latency, tokens, provider, and structured JSON output.
+  - Updates `incidents.root_cause_summary` with the generated investigation summary.
+  - Logs auditable lifecycle entries into `audit_logs` (`incident_investigation_started`, `incident_investigation_completed`, `incident_investigation_failed`).
+- **RESTful API Endpoint:**
+  - Implemented `POST /api/v1/incidents/{incident_id}/investigate` in `backend/app/api/v1/endpoints/incidents.py`.
+  - Supports optional query parameters `provider` and `model` to override default settings.
+  - Returns structured `BaseResponse[IncidentInvestigationResponse]`.
+  - Correctly maps missing incidents to HTTP 404, missing credentials to HTTP 503, and execution errors to HTTP 500.
+- **Automated Verification:**
+  - 16 new comprehensive unit and integration tests across 4 test modules under `backend/tests/agents/`:
+    - `test_llm_providers.py`: Factory initialization, credentials check, masked info, unsupported providers.
+    - `test_investigation_workflow.py`: Node execution, graph assembly, fallback on malformed output.
+    - `test_investigation_executor.py`: End-to-end execution, database persistence in `agent_executions`, audit logging.
+    - `test_investigation_api.py`: Endpoint success, 404 not found, 503 provider unconfigured.
+  - Full backend test suite: **82 passed, 0 failed**.
+  - Full frontend test suite: **16 passed, 0 failed**.
+
+### 2. Verification Results
+- **Backend Test Suite:** 82 passed in 3.29s (pytest)
+- **Frontend Test Suite:** 16 passed in 2.86s (vitest)
+- **Code Coverage Scope:** LLM providers, graph nodes, workflow orchestration, database persistence, and API routing.
 
 ---
 
