@@ -17,9 +17,45 @@
 | **Phase 4.1** | Switch Architecture Research & Technical Investigation | ✅ Completed | 2026-11-03 |
 | **Phase 4.2** | Backend Switch Integration Foundation (Protocol Client, Listener, Status) | ✅ Completed | 2026-11-03 |
 | **Phase 4.3** | Bidirectional Messaging & Incident Intake | ✅ Completed | 2026-11-03 |
-| **Phase 4.4** | Frontend Switch Status, E2E Testing & Documentation | ⏳ Next | Planned |
-| **Phase 5** | Authentication & Security (JWT, RBAC) | ⏳ Pending | Planned |
+| **Phase 4.4** | Frontend Switch Integration, E2E Testing & Documentation | ✅ Completed | 2026-11-03 |
+| **Phase 5** | Authentication & Security (JWT, RBAC) | ⏳ Next | Planned |
 | **Phase 6** | AI Agent System (LangChain, LangGraph Multi-Agent Workflows) | ⏳ Pending | Planned |
+
+---
+
+## Phase 4.4: Frontend Switch Integration, End-to-End Testing & Documentation — Detailed Report
+
+### 1. Objectives Completed
+- **Backend Incident Read Endpoints:**
+  - Implemented `GET /api/v1/incidents` supporting pagination (`skip`, `limit`) and status/severity/project filtering.
+  - Implemented `GET /api/v1/incidents/{incident_id}` returning single incident detail or structured 404 error envelope.
+  - Implemented `GET /api/v1/incidents/{incident_id}/events` returning chronological event history.
+  - Implemented `GET /api/v1/incidents/stats/summary` aggregating incident counts across lifecycle states.
+  - Added `project_name` property to `Incident` model and `IncidentResponse` schema for human-readable labels.
+  - Added safe `agent_id` property to `SwitchStatusResponse` and listener status reporting.
+  - Configured CORS for `http://localhost:5173`, `http://127.0.0.1:5173`, and `http://localhost:3000`.
+- **Frontend Real Switch Integration:**
+  - Implemented `switchService` and `incidentService` using Axios configured with `VITE_API_BASE_URL`.
+  - Implemented `useSwitchStatus` TanStack Query hook with 10-second polling interval and `refetchIntervalInBackground: false` to stop polling on inactive tabs.
+  - Implemented `useIncidents` and `useIncidentStats` hooks for live database telemetry.
+  - Created `SwitchStatusBadge` component rendering distinct states: Connected, Connecting, Disconnected, Unconfigured, Disabled, Error, and Backend Offline.
+  - Created `SwitchOverviewCard` component displaying lifecycle state, agent ID, last connection/error timestamps, and backend configuration guidance.
+  - Created dedicated `/integrations/switch` page and embedded Switch console within Settings > Integrations.
+- **Dashboard & Incident Queue Integration:**
+  - Updated `DashboardPage` with live Switch status badge, real backend incident count KPI overlay, and link to Switch console.
+  - Updated `IncidentOverview` and `IncidentsPage` to render live PostgreSQL incidents with source indicators (`switch` / `telemetry`) and fallback to simulation mode when requested.
+  - Maintained clear visual distinction between live database records and simulated demo models.
+- **Testing & Verification:**
+  - 9 new backend incident API tests in `backend/tests/api/test_incidents.py` (total backend suite: 66 passing tests).
+  - 9 comprehensive integration tests in `frontend/src/test/SwitchIntegration.test.tsx` covering all connection states, error handling, polling, and incident rendering (total frontend suite: 16 passing tests).
+  - 100% production build verification with `tsc -b && vite build`.
+- **Documentation:**
+  - Overhauled root `README.md` with complete architecture diagram, PowerShell commands, Switch setup, Alembic migrations, and security boundaries.
+
+### 2. Verification Results
+- **Backend:** 66 passed in 3.33s (pytest)
+- **Frontend:** 16 passed in 6.90s (Vitest)
+- **Build:** Clean production build with Vite 6.4.5 & TypeScript 5.8
 
 ---
 

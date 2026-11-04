@@ -101,6 +101,11 @@ class Incident(Base):
         "Project",
         back_populates="incidents",
     )
+
+    @property
+    def project_name(self) -> Optional[str]:
+        return self.project.name if self.project else None
+
     events: Mapped[List["IncidentEvent"]] = relationship(
         "IncidentEvent",
         back_populates="incident",

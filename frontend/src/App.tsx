@@ -8,6 +8,7 @@ import { IncidentsPage } from '@/pages/incidents/IncidentsPage'
 import { AgentsPage } from '@/pages/agents/AgentsPage'
 import { AuditLogsPage } from '@/pages/audit-logs/AuditLogsPage'
 import { SettingsPage } from '@/pages/settings/SettingsPage'
+import { SwitchIntegrationPage } from '@/pages/integrations/SwitchIntegrationPage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
 
 const queryClient = new QueryClient({
@@ -31,6 +32,8 @@ export default function App() {
             <Route path="/projects" element={<ProjectsPage />} />
             <Route path="/incidents" element={<IncidentsPage />} />
             <Route path="/agents" element={<AgentsPage />} />
+            <Route path="/integrations" element={<SwitchIntegrationPage />} />
+            <Route path="/integrations/switch" element={<SwitchIntegrationPage />} />
             <Route path="/audit-logs" element={<AuditLogsPage />} />
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="*" element={<NotFoundPage />} />

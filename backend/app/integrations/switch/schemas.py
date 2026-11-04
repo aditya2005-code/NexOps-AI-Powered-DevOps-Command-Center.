@@ -21,6 +21,7 @@ class SwitchStatusResponse(BaseModel):
     configured: bool
     state: SwitchConnectionState
     connected: bool
+    agent_id: Optional[str] = None
     last_connected_at: Optional[datetime] = None
     last_error_at: Optional[datetime] = None
     last_error: Optional[str] = None

@@ -10,6 +10,7 @@ import {
   ChevronRight,
   Hexagon,
   Sparkles,
+  Radio,
 } from 'lucide-react'
 
 interface SidebarProps {
@@ -42,7 +43,8 @@ const NAV_SECTIONS: NavSection[] = [
     title: 'WORKSPACE',
     items: [
       { to: '/projects', icon: FolderGit2, label: 'Projects', badge: '12' },
-      { to: '/incidents', icon: ShieldAlert, label: 'Incidents', badge: '3' },
+      { to: '/incidents', icon: ShieldAlert, label: 'Incidents' },
+      { to: '/integrations/switch', icon: Radio, label: 'Switch Bridge' },
       { to: '/agents', icon: Bot, label: 'AI Agents', badge: '5' },
     ],
   },

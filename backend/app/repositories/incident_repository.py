@@ -1,6 +1,6 @@
 import uuid
 from typing import List, Optional
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.orm import Session
 from app.models.incident import Incident, IncidentSeverity, IncidentStatus
 from app.models.incident_event import IncidentEvent
@@ -37,9 +37,30 @@ class IncidentRepository:
         return db.scalar(statement)
 
     @staticmethod
-    def list(db: Session, skip: int = 0, limit: int = 100) -> List[Incident]:
-        statement = select(Incident).offset(skip).limit(limit).order_by(Incident.detected_at.desc())
+    def list(
+        db: Session,
+        skip: int = 0,
+        limit: int = 100,
+        status: Optional[IncidentStatus] = None,
+        severity: Optional[IncidentSeverity] = None,
+        project_id: Optional[uuid.UUID] = None,
+    ) -> List[Incident]:
+        statement = select(Incident)
+        if status is not None:
+            statement = statement.where(Incident.status == status)
+        if severity is not None:
+            statement = statement.where(Incident.severity == severity)
+        if project_id is not None:
+            statement = statement.where(Incident.project_id == project_id)
+        statement = statement.offset(skip).limit(limit).order_by(Incident.detected_at.desc())
         return list(db.scalars(statement).all())
+
+    @staticmethod
+    def count(db: Session, status: Optional[IncidentStatus] = None) -> int:
+        statement = select(func.count(Incident.id))
+        if status is not None:
+            statement = statement.where(Incident.status == status)
+        return db.scalar(statement) or 0
 
     @staticmethod
     def update_status(db: Session, incident: Incident, status: IncidentStatus) -> Incident:

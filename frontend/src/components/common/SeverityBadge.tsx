@@ -1,7 +1,7 @@
 import type { IncidentSeverity } from '@/types'
 
 interface SeverityBadgeProps {
-  severity: IncidentSeverity
+  severity: string
   className?: string
 }
 
@@ -33,8 +33,11 @@ export function SeverityBadge({ severity, className = '' }: SeverityBadgeProps) 
     },
   }
 
-  const current = styles[severity] || styles.low
-  const label = severity.charAt(0).toUpperCase() + severity.slice(1)
+  const key = (severity.toLowerCase() as IncidentSeverity) in styles
+    ? (severity.toLowerCase() as IncidentSeverity)
+    : 'low'
+  const current = styles[key]
+  const label = key.charAt(0).toUpperCase() + key.slice(1)
 
   return (
     <span
@@ -45,4 +48,3 @@ export function SeverityBadge({ severity, className = '' }: SeverityBadgeProps) 
     </span>
   )
 }
-
