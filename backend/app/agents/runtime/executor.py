@@ -125,6 +125,7 @@ class IncidentInvestigationExecutor:
             raise cfg_err
 
         # 7. Construct initial graph state
+        project_ws = settings.get_project_workspace_path(project.name if project else None)
         initial_state: InvestigationState = {
             "incident_id": str(incident.id),
             "project_id": str(incident.project_id) if incident.project_id else None,
@@ -135,6 +136,7 @@ class IncidentInvestigationExecutor:
             "incident_source": incident.source,
             "project_name": project.name if project else "Unassigned",
             "project_environment": project.environment if project else "unknown",
+            "project_workspace_path": str(project_ws) if project_ws else None,
             "incident_events": events_data,
             "errors": [],
         }
@@ -157,7 +159,14 @@ class IncidentInvestigationExecutor:
                 output_data=investigation_result.model_dump(),
             )
             # Update incident's root cause summary if hypotheses were formed
-            if investigation_result.hypotheses:
+            if investigation_result.structured_hypotheses:
+                incident.root_cause_summary = "\n".join(
+                    f"{h.root_cause_title}: {h.technical_explanation}"
+                    if h.technical_explanation and h.technical_explanation != h.root_cause_title
+                    else h.root_cause_title
+                    for h in investigation_result.structured_hypotheses
+                )
+            elif investigation_result.hypotheses:
                 incident.root_cause_summary = "\n".join(investigation_result.hypotheses)
 
             AuditLogRepository.append(

@@ -124,3 +124,67 @@ def test_workflow_model_failure_gracefully_handled() -> None:
     assert res["confidence_score"] == 0.0
     assert "Automated investigation failed" in res["incident_summary"]
 
+
+def test_workflow_multi_evidence_and_workspace_correlation(tmp_path) -> None:
+    """Verify workflow executes diagnostic tools, inspects workspace, and correlates evidence."""
+    # Create mock workspace
+    ws = tmp_path / "mock_service"
+    ws.mkdir()
+    src = ws / "api"
+    src.mkdir()
+    (src / "gateway.py").write_text(
+        "def forward():\n    raise ConnectionResetError('Peer closed socket')\n",
+        encoding="utf-8",
+    )
+
+    mock_result = InvestigationResult(
+        incident_summary="Upstream TCP connection reset in API Gateway.",
+        observed_facts=["ConnectionResetError in api/gateway.py:2"],
+        hypotheses=["Upstream TCP reset during high traffic."],
+        supporting_evidence=["EV-001", "EV-002"],
+        confidence_score=0.92,
+        recommended_diagnostic_steps=["Verify TCP keepalive settings."],
+        recommended_next_actions=["Deploy connection retry policy."],
+        missing_information=[],
+    )
+
+    mock_llm = MagicMock(spec=BaseChatModel)
+    mock_structured = MagicMock()
+    mock_structured.invoke.return_value = mock_result
+    mock_llm.with_structured_output.return_value = mock_structured
+
+    graph = create_investigation_graph(llm=mock_llm)
+
+    state: InvestigationState = {
+        "incident_id": "inc-corr-001",
+        "incident_title": "Gateway 502 Bad Gateway Spike",
+        "incident_description": 'Traceback shows File "api/gateway.py", line 2 in forward',
+        "incident_severity": "CRITICAL",
+        "incident_status": "OPEN",
+        "incident_source": "switch",
+        "project_name": "API Gateway",
+        "project_environment": "production",
+        "project_workspace_path": str(ws),
+        "incident_events": [
+            {
+                "event_type": "switch_message",
+                "actor_identifier": "alice",
+                "description": "ConnectionResetError: Peer closed socket on port 8080",
+                "created_at": "2026-11-04T12:00:00Z",
+            }
+        ],
+        "errors": [],
+    }
+
+    final_state = graph.invoke(state)
+
+    assert final_state["execution_status"] == "completed"
+    res = final_state["investigation_result"]
+    assert res is not None
+    assert len(res["evidence_items"]) >= 2
+    assert len(res["structured_hypotheses"]) >= 1
+    # Check that diagnostic tools ran and logged results
+    assert len(final_state["tool_execution_results"]) >= 1
+    assert any(tr["tool_name"] == "log_analyzer" for tr in final_state["tool_execution_results"])
+
+

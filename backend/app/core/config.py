@@ -1,4 +1,5 @@
 from functools import lru_cache
+from pathlib import Path
 from typing import Literal, Optional, Union
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -68,6 +69,10 @@ class Settings(BaseSettings):
     SWITCH_RECONNECT_MAX_DELAY: float = 60.0
     SWITCH_CONNECTION_TIMEOUT: float = 15.0
     SWITCH_ROOM_PROJECT_MAPPING: Union[str, dict[str, str]] = Field(default_factory=dict)
+
+    # Project Workspaces for Safe Source-Code Investigation
+    PROJECT_WORKSPACES_ROOT: Optional[str] = None
+    PROJECT_WORKSPACE_MAPPING: Union[str, dict[str, str]] = Field(default_factory=dict)
 
     @field_validator("ENVIRONMENT", mode="before")
     @classmethod
@@ -167,6 +172,53 @@ class Settings(BaseSettings):
                         result[k.strip()] = v.strip()
             return result
         return {}
+
+    @property
+    def project_workspace_mapping(self) -> dict[str, str]:
+        """Map of project IDs or names to absolute workspace paths on disk."""
+        mapping = self.PROJECT_WORKSPACE_MAPPING
+        if isinstance(mapping, dict):
+            return mapping
+        if isinstance(mapping, str):
+            cleaned = mapping.strip()
+            if not cleaned:
+                return {}
+            if cleaned.startswith("{") and cleaned.endswith("}"):
+                import json
+                try:
+                    parsed = json.loads(cleaned)
+                    if isinstance(parsed, dict):
+                        return {str(k): str(v) for k, v in parsed.items()}
+                except Exception:
+                    pass
+            result: dict[str, str] = {}
+            for pair in cleaned.split(","):
+                if "=" in pair:
+                    k, v = pair.split("=", 1)
+                    if k.strip() and v.strip():
+                        result[k.strip()] = v.strip()
+                elif ":" in pair:
+                    k, v = pair.split(":", 1)
+                    if k.strip() and v.strip():
+                        result[k.strip()] = v.strip()
+            return result
+        return {}
+
+    def get_project_workspace_path(self, project_id_or_name: Optional[str]) -> Optional[Path]:
+        """Safely resolve configured workspace path for a project, if defined."""
+        if not project_id_or_name:
+            return None
+        target = self.project_workspace_mapping.get(str(project_id_or_name))
+        if target:
+            p = Path(target)
+            if p.is_dir():
+                return p.resolve()
+        if self.PROJECT_WORKSPACES_ROOT:
+            candidate = Path(self.PROJECT_WORKSPACES_ROOT) / str(project_id_or_name)
+            if candidate.is_dir():
+                return candidate.resolve()
+        return None
+
 
 
 @lru_cache

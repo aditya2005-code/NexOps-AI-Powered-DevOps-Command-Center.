@@ -19,8 +19,56 @@
 | **Phase 4.3** | Bidirectional Messaging & Incident Intake | ✅ Completed | 2026-11-03 |
 | **Phase 4.4** | Frontend Switch Integration, E2E Testing & Documentation | ✅ Completed | 2026-11-03 |
 | **Phase 5.1** | AI Agent Runtime & LangGraph Foundation (Gemini/Groq, Incident Investigation) | ✅ Completed | 2026-11-04 |
-| **Phase 5.2** | Automated Root-Cause Analysis & Dynamic Diagnostics | ⏳ Next | Planned |
-| **Phase 6** | Remediation Planning, Human Approval Gates & Verification | ⏳ Pending | Planned |
+| **Phase 5.2** | Advanced Incident Investigation Agent & Diagnostic Tools | ✅ Completed | 2026-11-04 |
+| **Phase 6** | Remediation Planning, Human Approval Gates & Verification | ⏳ Next | Planned |
+
+---
+
+## Phase 5.2: Advanced Incident Investigation Agent & Diagnostic Tools — Detailed Report
+
+### 1. Objectives Completed
+- **Diagnostic Tool Registry Architecture:**
+  - Designed `BaseDiagnosticTool` abstract base class with explicit Pydantic input/output schemas and safe execution wrappers (`safe_execute`) that capture timing, catch unhandled errors, and prevent runtime crashes.
+  - Implemented `DiagnosticToolRegistry` singleton in `backend/app/agents/tools/registry.py` strictly enforcing permission boundaries (no arbitrary Python, shell, or unbounded OS commands).
+- **Read-Only Deterministic Log Analysis Tool:**
+  - Implemented `LogAnalysisTool` in `backend/app/agents/tools/log_analyzer.py`.
+  - Parses log text to extract `ERROR` and `CRITICAL` entries, ISO-8601 and syslog timestamps, and associated stack traces.
+  - Normalizes dynamic parameters (UUIDs, IP addresses, timestamps, hex, numbers) to cluster repeated error patterns into representative templates.
+  - Detects error frequency spikes across time windows.
+  - Enforces strict input size limits (500,000 characters) and output limits (50 entries, 10 patterns) with truncation warnings.
+- **Secure Read-Only Source Code Inspector:**
+  - Implemented `SourceInspectionTool` in `backend/app/agents/tools/source_inspector.py`.
+  - Restricted strictly to project workspaces configured via trusted settings (`PROJECT_WORKSPACE_MAPPING` or `PROJECT_WORKSPACES_ROOT`).
+  - Strict path traversal defenses: resolves all paths with `.resolve()` and verifies `target.is_relative_to(workspace)`.
+  - Sensitive files blocklist: automatically rejects `.env*`, `*.pem`, `*.key`, `*id_rsa*`, `*.pkcs12`, `credentials*.json`, `service_account*.json`, `.git/*`, and `.aws/*`.
+  - Enforces file size limit of 100 KB and line limits of 300 lines per read.
+  - Supports `list_files`, `read_file`, and `search_code` operations.
+- **Evidence Correlation & Typed Schemas:**
+  - Created `EvidenceItem` and `RootCauseHypothesis` in `backend/app/agents/schemas/evidence.py`.
+  - Tracks evidence IDs (`EV-001`, `EV-002`, ...), source category (`log`, `stack_trace`, `source_code`, `incident_description`, `incident_event`, `telemetry`), source references, classifications, and reliability status (`verified`, `probable`, `inconclusive`).
+  - Extended `InvestigationResult` with `evidence_items`, `structured_hypotheses`, `insufficient_evidence`, and `diagnostic_summary` while maintaining 100% backward compatibility for existing callers.
+- **Modular 7-Step LangGraph Investigation Workflow:**
+  - Built sequential StateGraph pipeline in `backend/app/agents/workflows/incident_investigation.py`:
+    - `prepare_context`: Resolves project metadata and maps trusted workspace path.
+    - `build_investigation_plan`: Evaluates presence of logs and source workspaces to construct diagnostic plan.
+    - `collect_evidence`: Runs `log_analyzer` and `source_inspector`, translating findings into `EvidenceItem` models.
+    - `analyze_evidence`: Correlates evidence items and formats prompt with explicit evidence IDs.
+    - `investigate`: Invokes configured LLM with structured output schema.
+    - `validate_hypotheses`: Validates supporting evidence IDs, flags contradictions, calibrates confidence scores (caps at <= 0.25 when evidence is insufficient), and ranks hypotheses.
+    - `validate_and_format`: Synthesizes final report and diagnostic summaries.
+- **Execution Retrieval API:**
+  - Created `GET /api/v1/agent-executions/{execution_id}` in `backend/app/api/v1/endpoints/agent_executions.py`.
+  - Sanitizes `input_data` to ensure no API keys or credentials can ever be exposed.
+  - Returns structured `AgentExecutionResponse` or HTTP 404 for missing records.
+- **Testing & Verification:**
+  - Added 20 new tests across 4 modules (`test_log_analyzer.py`, `test_source_inspector.py`, `test_evidence_hypotheses.py`, `test_agent_executions_api.py`).
+  - Total backend test suite now at **102 passing tests, 0 failures**.
+  - Total frontend test suite at **16 passing tests, 0 failures**.
+
+### 2. Verification Results
+- **Backend Test Suite:** 102 passed in 3.82s (pytest)
+- **Frontend Test Suite:** 16 passed in 2.97s (vitest)
+- **Security Check:** Zero code execution, zero write permissions, path traversal blocked, sensitive credentials filtered.
 
 ---
 

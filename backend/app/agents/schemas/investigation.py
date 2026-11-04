@@ -1,7 +1,9 @@
 import uuid
 from datetime import datetime
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, ConfigDict, Field
+
+from app.agents.schemas.evidence import EvidenceItem, RootCauseHypothesis
 
 
 class InvestigationResult(BaseModel):
@@ -39,6 +41,23 @@ class InvestigationResult(BaseModel):
     missing_information: List[str] = Field(
         default_factory=list,
         description="Crucial context, logs, traces, or system telemetry that were absent from the report",
+    )
+    # Phase 5.2 Structured Evidence & Hypotheses
+    evidence_items: List[EvidenceItem] = Field(
+        default_factory=list,
+        description="Correlated technical evidence records with IDs and source references",
+    )
+    structured_hypotheses: List[RootCauseHypothesis] = Field(
+        default_factory=list,
+        description="Hypotheses with explicit supporting evidence references and confidence ratings",
+    )
+    insufficient_evidence: bool = Field(
+        default=False,
+        description="True if evidence is insufficient to determine a dependable root cause",
+    )
+    diagnostic_summary: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description="Metadata on diagnostic tools executed during investigation",
     )
 
     model_config = ConfigDict(from_attributes=True)
