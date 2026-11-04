@@ -74,6 +74,13 @@ class Settings(BaseSettings):
     PROJECT_WORKSPACES_ROOT: Optional[str] = None
     PROJECT_WORKSPACE_MAPPING: Union[str, dict[str, str]] = Field(default_factory=dict)
 
+    # Phase 5.4: Controlled Patch Application & Approval Settings
+    DEV_APPROVAL_ENABLED: bool = True
+    DEV_APPROVAL_ACTOR: str = "dev_reviewer_unverified"
+    NEXOPS_WORKTREE_DIR: Optional[str] = None
+    GIT_EXECUTABLE_PATH: Optional[str] = None
+    GIT_SUBPROCESS_TIMEOUT: float = 30.0
+
     @field_validator("ENVIRONMENT", mode="before")
     @classmethod
     def sync_environment(cls, v: str, info) -> str:

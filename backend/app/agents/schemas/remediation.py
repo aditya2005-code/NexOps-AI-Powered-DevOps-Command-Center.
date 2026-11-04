@@ -84,6 +84,7 @@ class PatchValidationResult(BaseModel):
     authorized_files_only: bool
     lines_added: int = 0
     lines_removed: int = 0
+    files_touched: List[str] = Field(default_factory=list)
     validation_errors: List[str] = Field(default_factory=list)
 
     model_config = ConfigDict(from_attributes=True)

@@ -319,5 +319,6 @@ class DiffValidator:
             authorized_files_only=authorized_files_only,
             lines_added=lines_added,
             lines_removed=lines_removed,
+            files_touched=sorted(list(touched_files)),
             validation_errors=errors,
         )

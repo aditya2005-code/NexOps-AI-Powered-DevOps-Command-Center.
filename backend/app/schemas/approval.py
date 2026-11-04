@@ -25,3 +25,11 @@ class ApprovalResponse(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
+
+class PatchApproveRequest(BaseModel):
+    comment: Optional[str] = Field(None, max_length=1000, description="Optional reviewer comment on approval")
+
+
+class PatchRejectRequest(BaseModel):
+    reason: Optional[str] = Field(None, max_length=1000, description="Optional rejection reason")
+

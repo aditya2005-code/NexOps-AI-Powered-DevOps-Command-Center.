@@ -22,7 +22,55 @@
 | **Phase 5.2** | Advanced Incident Investigation Agent & Diagnostic Tools | ✅ Completed | 2026-11-04 |
 | **Phase 5.3** | AI-Powered Remediation & Code Patch Generation | ✅ Completed | 2026-11-04 |
 | **Phase 5.3 Audit** | Security, Integrity & Architecture Audit | ✅ Completed | 2026-11-04 |
-| **Phase 6** | Human Approval Gates, Isolated Sandbox Execution & Verification | ⏳ Next | Planned |
+| **Phase 5.4** | Human Approval & Controlled Patch Application | ✅ Completed | 2026-11-04 |
+| **Phase 6** | Isolated Docker Sandbox Execution & Verification | ⏳ Next | Planned |
+
+---
+
+## Phase 5.4: Human Approval & Controlled Patch Application — Detailed Report
+
+### 1. Objectives Completed
+- **State Lifecycle:**
+  - Implemented strict state machine: `pending_approval` → `approved` / `rejected` → `applying` → `applied` / `failed`.
+  - Conditional updates guarantee atomic state transitions, preventing race conditions or duplicate executions.
+- **Cryptographic Patch Integrity & Hash Binding:**
+  - Before approval: persisted patch is loaded, SHA-256 recomputed and verified against stored hash, and bound to the `Approval` record.
+  - Before application: patch is reloaded, SHA-256 recomputed, and verified against both `CodePatch.patch_hash` and `Approval.patch_hash`. A modified patch can never be applied.
+- **Safe Git Subprocess Execution (`SafeGitExecutor`):**
+  - Strict allowlist: `rev-parse`, `cat-file`, `worktree`, `status`, `apply`, `diff`.
+  - Strict blocklist: blocks `push`, `merge`, `commit`, `pull`, `clone`, `rebase`, `reset`, `clean`.
+  - Enforced `shell=False`, argument arrays (`List[str]`), timeout boundaries, 64 KB output limit, and secret redaction.
+- **Isolated Disposable Git Worktree Architecture (`WorktreeManager`):**
+  - Worktrees created under dedicated root directory (`Path(tempfile.gettempdir()) / "nexops_worktrees"` or `NEXOPS_WORKTREE_DIR`).
+  - Strict path traversal prevention: verifies worktree is contained within the root.
+  - Verifies base commit exists and worktree starts completely clean.
+  - Patch tested via `git apply --check -` using stdin before real application.
+  - Patch applied using `git apply --whitespace=nowarn -` using stdin.
+  - Modified files verified against patch declaration; unexpected modified files rejected.
+  - Worktree cleaned up and pruned; **primary repository working tree remains 100% untouched.**
+- **Short Transaction Lifecycle:**
+  - Database locks are never held open during Git subprocess operations.
+  - Atomic transition to `applying` committed immediately, Git operations run outside transaction, final state (`applied`/`failed`) committed in a second short transaction.
+  - Built recovery mechanism `recover_stale_applying_patches` for abandoned/interrupted tasks.
+- **Human Approval & Identity Service (`ApprovalService`):**
+  - Endpoints to approve, reject, retrieve current approval, and retrieve approval history.
+  - In development: clearly labeled `dev_reviewer_unverified` used when unauthenticated.
+  - In production: strictly requires authenticated human identity, raising `AuthenticationRequiredError`.
+- **RESTful Endpoints Added:**
+  - `POST /api/v1/patches/{patch_id}/approve`
+  - `POST /api/v1/patches/{patch_id}/reject`
+  - `GET /api/v1/patches/{patch_id}/approval`
+  - `GET /api/v1/patches/{patch_id}/approval/history`
+  - `POST /api/v1/patches/{patch_id}/apply`
+  - `GET /api/v1/patches/{patch_id}/application`
+- **Audit Logging:**
+  - Events recorded: `approval_granted`, `approval_rejected`, `patch_application_started`, `patch_application_succeeded`, `patch_application_failed`.
+- **Automated Verification:**
+  - Added 23 new tests across 4 test modules (`test_patch_approval.py`, `test_git_worktree.py`, `test_patch_application.py`, `test_patch_application_api.py`).
+  - Full backend test suite: **166 passed, 0 failed**.
+  - Full frontend test suite: **16 passed, 0 failed**.
+
+---
 
 ---
 
