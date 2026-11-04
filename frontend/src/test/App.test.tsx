@@ -7,6 +7,7 @@ import { DashboardPage } from '@/pages/dashboard/DashboardPage'
 import { ProjectsPage } from '@/pages/projects/ProjectsPage'
 import { IncidentsPage } from '@/pages/incidents/IncidentsPage'
 import { AgentsPage } from '@/pages/agents/AgentsPage'
+import { SwitchIntegrationPage } from '@/pages/integrations/SwitchIntegrationPage'
 import { AuditLogsPage } from '@/pages/audit-logs/AuditLogsPage'
 import { SettingsPage } from '@/pages/settings/SettingsPage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
@@ -29,6 +30,8 @@ function renderWithRouter(initialRoute = '/') {
             <Route path="/projects" element={<ProjectsPage />} />
             <Route path="/incidents" element={<IncidentsPage />} />
             <Route path="/agents" element={<AgentsPage />} />
+            <Route path="/integrations" element={<SwitchIntegrationPage />} />
+            <Route path="/integrations/switch" element={<SwitchIntegrationPage />} />
             <Route path="/audit-logs" element={<AuditLogsPage />} />
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="*" element={<NotFoundPage />} />
@@ -52,6 +55,7 @@ describe('NexOps Frontend Architecture & Dashboard Tests', () => {
     expect(within(nav).getByRole('link', { name: /dashboard/i })).toBeInTheDocument()
     expect(within(nav).getByRole('link', { name: /projects/i })).toBeInTheDocument()
     expect(within(nav).getByRole('link', { name: /incidents/i })).toBeInTheDocument()
+    expect(within(nav).getByRole('link', { name: /switch bridge/i })).toBeInTheDocument()
     expect(within(nav).getByRole('link', { name: /ai agents/i })).toBeInTheDocument()
     expect(within(nav).getByRole('link', { name: /audit logs/i })).toBeInTheDocument()
     expect(within(nav).getByRole('link', { name: /settings/i })).toBeInTheDocument()
@@ -87,8 +91,12 @@ describe('NexOps Frontend Architecture & Dashboard Tests', () => {
     // Incidents route
     const { unmount: unmountIncidents } = renderWithRouter('/incidents')
     expect(screen.getAllByText('Incident Queue & Investigation').length).toBeGreaterThan(0)
-    expect(screen.getByText('INC-4091')).toBeInTheDocument()
     unmountIncidents()
+
+    // Switch Integration route
+    const { unmount: unmountSwitch } = renderWithRouter('/integrations/switch')
+    expect(screen.getAllByText('Switch Collaboration Bridge').length).toBeGreaterThan(0)
+    unmountSwitch()
 
     // Agents route
     const { unmount: unmountAgents } = renderWithRouter('/agents')

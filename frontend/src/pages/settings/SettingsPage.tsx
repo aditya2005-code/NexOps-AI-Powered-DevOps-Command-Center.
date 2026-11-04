@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Sliders, Bell, Palette, Radio, Save, Shield } from 'lucide-react'
 import { PageHeader } from '@/components/common/PageHeader'
 import { Button } from '@/components/ui/button'
+import { SwitchOverviewCard } from '@/components/integrations/SwitchOverviewCard'
 
 export function SettingsPage() {
   const [activeTab, setActiveTab] = useState<'general' | 'appearance' | 'notifications' | 'integrations'>('general')
@@ -183,43 +184,26 @@ export function SettingsPage() {
           )}
 
           {activeTab === 'integrations' && (
-            <div className="space-y-5">
+            <div className="space-y-6">
               <div>
                 <h3 className="text-base font-semibold text-white">Connected Integrations</h3>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  Status of third-party platforms and agent collaboration channels
+                  Live connection health for official Switch Agent Bridge and database telemetry
                 </p>
               </div>
 
-              <div className="space-y-3">
-                <div className="flex items-center justify-between p-3.5 rounded-lg border border-[#1e2436] bg-[#0c0e15] text-xs">
-                  <div className="flex items-center gap-2.5">
-                    <Radio className="w-4 h-4 text-cyan-400" />
-                    <div>
-                      <span className="font-semibold text-white block">Switch Collaboration Engine</span>
-                      <span className="text-[11px] text-slate-400">
-                        Agent-to-human collaboration workspace (Phase 5)
-                      </span>
-                    </div>
-                  </div>
-                  <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-amber-500/10 text-amber-300 border border-amber-500/20">
-                    Configuration Pending
-                  </span>
-                </div>
+              {/* Real Switch Integration Card */}
+              <SwitchOverviewCard />
 
-                <div className="flex items-center justify-between p-3.5 rounded-lg border border-[#1e2436] bg-[#0c0e15] text-xs">
-                  <div className="flex items-center gap-2.5">
-                    <Shield className="w-4 h-4 text-indigo-400" />
-                    <div>
-                      <span className="font-semibold text-white block">Neon PostgreSQL Database</span>
-                      <span className="text-[11px] text-slate-400">
-                        Primary telemetry and incident persistence layer (Phase 2 Backend)
-                      </span>
-                    </div>
+              <div className="rounded-xl border border-[#1e2436] bg-[#0c0e15] p-4 text-xs space-y-2">
+                <div className="flex items-center gap-2.5">
+                  <Shield className="w-4 h-4 text-indigo-400" />
+                  <div>
+                    <span className="font-semibold text-white block">Neon PostgreSQL Database</span>
+                    <span className="text-[11px] text-slate-400">
+                      Primary telemetry and incident persistence layer (Active)
+                    </span>
                   </div>
-                  <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-indigo-500/10 text-indigo-300 border border-indigo-500/20">
-                    Schema Ready
-                  </span>
                 </div>
               </div>
             </div>
@@ -239,4 +223,3 @@ export function SettingsPage() {
     </div>
   )
 }
-

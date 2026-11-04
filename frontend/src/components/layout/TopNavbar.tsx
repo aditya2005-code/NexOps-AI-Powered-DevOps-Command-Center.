@@ -16,6 +16,8 @@ const PAGE_TITLES: Record<string, { title: string; category: string }> = {
   '/projects': { title: 'Monitored Projects', category: 'Workspace' },
   '/incidents': { title: 'Incident Response & Queue', category: 'Workspace' },
   '/agents': { title: 'AI Agent Swarm', category: 'Workspace' },
+  '/integrations': { title: 'Switch Integration', category: 'Integrations' },
+  '/integrations/switch': { title: 'Switch Collaboration Bridge', category: 'Integrations' },
   '/audit-logs': { title: 'Audit Trail & Compliance', category: 'Observability' },
   '/settings': { title: 'System Settings', category: 'System' },
 }
@@ -96,4 +98,3 @@ export function TopNavbar({ onOpenMobile }: TopNavbarProps) {
     </header>
   )
 }
-

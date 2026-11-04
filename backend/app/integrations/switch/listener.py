@@ -59,6 +59,7 @@ class SwitchListener:
             configured=is_switch_configured(),
             state=self.state,
             connected=self.connected,
+            agent_id=settings.SWITCH_AGENT_ID if is_switch_configured() else None,
             last_connected_at=self.last_connected_at,
             last_error_at=self.last_error_at,
             last_error=self.last_error,

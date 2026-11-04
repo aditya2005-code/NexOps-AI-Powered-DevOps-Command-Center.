@@ -31,6 +31,7 @@ class IncidentUpdate(BaseModel):
 class IncidentResponse(IncidentBase):
     id: uuid.UUID
     project_id: uuid.UUID
+    project_name: Optional[str] = None
     detected_at: datetime
     resolved_at: Optional[datetime] = None
     created_at: datetime
