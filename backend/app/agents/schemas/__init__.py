@@ -9,6 +9,16 @@ from app.agents.schemas.evidence import (
     EvidenceItem,
     RootCauseHypothesis,
 )
+from app.agents.schemas.remediation import (
+    RemediationEligibilityStatus,
+    RemediationEligibility,
+    RemediationPlan,
+    PatchRiskLevel,
+    PatchRiskAssessment,
+    ProposedPatch,
+    PatchValidationResult,
+    RemediationResponse,
+)
 
 __all__ = [
     "InvestigationResult",
@@ -18,6 +28,14 @@ __all__ = [
     "EvidenceReliability",
     "EvidenceItem",
     "RootCauseHypothesis",
+    "RemediationEligibilityStatus",
+    "RemediationEligibility",
+    "RemediationPlan",
+    "PatchRiskLevel",
+    "PatchRiskAssessment",
+    "ProposedPatch",
+    "PatchValidationResult",
+    "RemediationResponse",
 ]
 
 

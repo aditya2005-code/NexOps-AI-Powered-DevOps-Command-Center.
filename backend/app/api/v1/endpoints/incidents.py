@@ -8,9 +8,12 @@ from app.models.incident import IncidentSeverity, IncidentStatus
 from app.repositories import IncidentRepository
 from app.schemas.common import BaseResponse
 from app.schemas.incident import IncidentEventResponse, IncidentResponse
-from app.agents.runtime import IncidentInvestigationExecutor
+from app.agents.runtime import IncidentInvestigationExecutor, IncidentRemediationExecutor
 from app.agents.schemas.investigation import IncidentInvestigationResponse
+from app.agents.schemas.remediation import RemediationResponse
 from app.agents.llm.exceptions import LLMConfigurationError
+from app.repositories import CodePatchRepository
+from app.schemas.code_patch import CodePatchResponse
 
 router = APIRouter()
 
@@ -165,5 +168,82 @@ def trigger_incident_investigation(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Investigation workflow failed: {str(exc)}",
         )
+
+
+@router.post(
+    "/incidents/{incident_id}/remediate",
+    response_model=BaseResponse[RemediationResponse],
+    summary="Trigger AI Remediation & Patch Generation",
+    description="Evaluates remediation eligibility and generates a unified code patch.",
+)
+def trigger_incident_remediation(
+    incident_id: uuid.UUID,
+    provider: Optional[str] = Query(None, description="Optional LLM provider override ('gemini' or 'groq')"),
+    model: Optional[str] = Query(None, description="Optional LLM model override"),
+    db: Session = Depends(get_db),
+) -> BaseResponse[RemediationResponse]:
+    """Execute AI remediation planning and patch generation for an incident."""
+    incident = IncidentRepository.get_by_id(db, incident_id)
+    if incident is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Incident with ID '{incident_id}' not found",
+        )
+
+    try:
+        remediation_response = IncidentRemediationExecutor.execute(
+            db=db,
+            incident_id=incident_id,
+            provider=provider,
+            model=model,
+        )
+        return BaseResponse(
+            success=True,
+            message="Incident remediation evaluation completed",
+            data=remediation_response,
+        )
+    except LLMConfigurationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Remediation workflow failed: {str(exc)}",
+        )
+
+
+@router.get(
+    "/incidents/{incident_id}/patches",
+    response_model=BaseResponse[List[CodePatchResponse]],
+    summary="List Incident Code Patches",
+    description="Retrieve all proposed code patches generated for an incident.",
+)
+def list_incident_patches(
+    incident_id: uuid.UUID,
+    db: Session = Depends(get_db),
+) -> BaseResponse[List[CodePatchResponse]]:
+    """List code patches for an incident ordered by creation timestamp descending."""
+    incident = IncidentRepository.get_by_id(db, incident_id)
+    if incident is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Incident with ID '{incident_id}' not found",
+        )
+
+    patches = CodePatchRepository.list_by_incident(db, incident_id)
+    patch_responses = []
+    for p in patches:
+        resp = CodePatchResponse.model_validate(p)
+        resp.is_hash_valid = CodePatchRepository.verify_patch_hash(p)
+        patch_responses.append(resp)
+
+    return BaseResponse(
+        success=True,
+        message="Incident code patches retrieved successfully",
+        data=patch_responses,
+    )
+
 
 

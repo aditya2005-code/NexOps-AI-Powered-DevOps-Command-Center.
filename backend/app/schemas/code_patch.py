@@ -23,6 +23,7 @@ class CodePatchResponse(BaseModel):
     patch_hash: str
     base_commit: Optional[str] = None
     status: str
+    is_hash_valid: bool = Field(default=True, description="Verified cryptographic SHA-256 integrity")
     created_at: datetime
     updated_at: datetime
 

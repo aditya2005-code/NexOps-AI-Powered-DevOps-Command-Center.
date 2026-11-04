@@ -72,6 +72,8 @@ class CodePatch(Base):
     @staticmethod
     def compute_sha256(content: str) -> str:
         """Compute cryptographic SHA-256 hash of patch content."""
+        if content is None or not content.strip():
+            raise ValueError("Patch content cannot be empty or whitespace")
         return hashlib.sha256(content.encode("utf-8")).hexdigest()
 
     # Relationships

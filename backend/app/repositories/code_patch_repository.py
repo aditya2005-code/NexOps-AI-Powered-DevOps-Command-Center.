@@ -1,5 +1,5 @@
 import uuid
-from typing import Optional
+from typing import List, Optional
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from app.models.code_patch import CodePatch
@@ -32,8 +32,23 @@ class CodePatchRepository:
         return db.scalar(statement)
 
     @staticmethod
-    def verify_patch_hash(patch: CodePatch, content: str) -> bool:
-        """Verify that the given content exactly matches the patch's cryptographic SHA-256 hash."""
-        candidate_hash = CodePatch.compute_sha256(content)
-        return patch.patch_hash == candidate_hash
+    def list_by_incident(db: Session, incident_id: uuid.UUID) -> List[CodePatch]:
+        statement = (
+            select(CodePatch)
+            .where(CodePatch.incident_id == incident_id)
+            .order_by(CodePatch.created_at.desc())
+        )
+        return list(db.scalars(statement).all())
+
+    @staticmethod
+    def verify_patch_hash(patch: CodePatch, content: Optional[str] = None) -> bool:
+        """Verify that the given content (or patch's own content) matches patch_hash."""
+        candidate = content if content is not None else patch.patch_content
+        if candidate is None or not candidate.strip():
+            return False
+        try:
+            return patch.patch_hash == CodePatch.compute_sha256(candidate)
+        except Exception:
+            return False
+
 

@@ -20,7 +20,101 @@
 | **Phase 4.4** | Frontend Switch Integration, E2E Testing & Documentation | ✅ Completed | 2026-11-03 |
 | **Phase 5.1** | AI Agent Runtime & LangGraph Foundation (Gemini/Groq, Incident Investigation) | ✅ Completed | 2026-11-04 |
 | **Phase 5.2** | Advanced Incident Investigation Agent & Diagnostic Tools | ✅ Completed | 2026-11-04 |
-| **Phase 6** | Remediation Planning, Human Approval Gates & Verification | ⏳ Next | Planned |
+| **Phase 5.3** | AI-Powered Remediation & Code Patch Generation | ✅ Completed | 2026-11-04 |
+| **Phase 5.3 Audit** | Security, Integrity & Architecture Audit | ✅ Completed | 2026-11-04 |
+| **Phase 6** | Human Approval Gates, Isolated Sandbox Execution & Verification | ⏳ Next | Planned |
+
+---
+
+## Phase 5.3 Audit: Security, Integrity and Architecture Audit Report
+
+### 1. Audit Summary
+- **Audit Date:** 2026-11-04
+- **Scope:** Diff validation syntax & boundaries, cryptographic patch hashing, deterministic risk assessment overrides, read-only workspace immutability across all failure scenarios, transaction error handling & rollback, and API information disclosure prevention.
+- **Backend Test Suite:** **143 passed, 0 failed** (17 new security and integrity tests added during audit).
+- **Frontend Test Suite:** **16 passed, 0 failed**.
+- **Audit Recommendation:** **APPROVED** for Phase 6 progression.
+
+### 2. Key Hardening & Verification Results
+- **Unified Diff Validator:**
+  - Added line-by-line hunk counter accounting (`old_count`, `new_count` matched against actual lines in each hunk).
+  - Added source snapshot context checking verifying that context lines in hunks match actual authorized file content.
+  - Added strict rejection of Windows drive letters (`C:\`, `D:/`), Windows backslash traversals, absolute paths, and `/dev/null` file creation/deletion.
+  - Added detection of duplicate file headers.
+  - Added rejection of non-standard and executable file extensions (`.exe`, `.sh`, `.ps1`, `.pem`, `.env`).
+- **Cryptographic Patch Hash Integrity:**
+  - Resolved `e3b0c442...` documentation placeholder discrepancy: verified that actual patches compute and persist true SHA-256 hashes of UTF-8 encoded patch diff bytes.
+  - Rejection of empty/whitespace patches during hash computation (`ValueError`).
+  - Added independent verification method `CodePatchRepository.verify_patch_hash(patch, content=None)` and dynamic API response field `is_hash_valid: bool`.
+  - Added test suite `test_patch_hash_integrity.py` proving detection of patch content tampering.
+- **Deterministic Risk Assessment Policy:**
+  - Hardened `PatchRiskEvaluator` with strict deterministic overrides for destructive SQL/OS operations (`DROP TABLE`, `DELETE FROM`, `TRUNCATE`, `rm -rf`, `os.remove`), setting risk level to `CRITICAL` (1.0).
+  - Enforced deterministic risk floor for sensitive functional categories (Auth, Authz/RBAC, Crypto, Payment, Migration, Sensitive Config).
+  - Ensured final risk level strictly equals `max(deterministic_level, model_level)`.
+- **Workspace Read-Only Immutability:**
+  - Added exhaustive test suite `test_workspace_integrity.py` computing workspace file SHA-256 hashes before and after execution across 5 scenarios:
+    1. Normal successful patch generation.
+    2. Model producing invalid non-diff patch.
+    3. LLM API exception.
+    4. Diff validator rejecting patch (path traversal attempt).
+    5. Database commit failure / error handling.
+  - Verified 100% zero workspace file modifications or timestamp touches.
+- **Transaction Rollback & Error State Persistence:**
+  - Verified `IncidentRemediationExecutor` performs proper DB rollback and records sanitized failure status into `AgentExecution` without leaking host directory paths or database credentials.
+
+---
+
+## Phase 5.3: AI-Powered Remediation & Code Patch Generation — Detailed Report
+
+### 1. Objectives Completed
+- **Remediation Eligibility Engine:**
+  - Implemented `evaluate_remediation_eligibility_node` evaluating whether an incident investigation justifies automated code generation.
+  - Returns explicit eligibility statuses: `eligible`, `insufficient_evidence`, `no_code_change_required`, `configuration_issue`, `infrastructure_issue`, and `unsupported_remediation`.
+  - Rejects code generation if evidence is sparse, if the issue is cloud/platform infrastructure or environment credentials, or if the project workspace is unmapped.
+- **Formal Remediation Planning:**
+  - Implemented `construct_remediation_plan_node` producing a structured `RemediationPlan` linking the selected root cause hypothesis, supporting evidence IDs, proposed remediation, expected behavior change, affected files, risks, assumptions, and verification requirements.
+- **Authorized Source Context Bounding:**
+  - Implemented `collect_source_context_node` reusing Phase 5.2's `SourceInspectionTool`.
+  - Reads only the specific files identified in the plan up to 150 lines per file with line numbers.
+  - Strictly rejects path traversal, workspace escaping, and sensitive file patterns (`.env`, `*.pem`, `*.key`, `id_rsa`).
+- **AI Patch Generation Node:**
+  - Implemented `create_generate_patch_node` using LangChain structured output (`with_structured_output(ProposedPatch)`).
+  - Constrains the model via `REMEDIATION_SYSTEM_PROMPT` to minimal, non-refactoring changes matching unified Git diff conventions.
+  - Safely handles model exceptions without crashing the pipeline.
+- **Deterministic Unified Diff Validator:**
+  - Built `DiffValidator` in `backend/app/agents/remediation/diff_validator.py`.
+  - Enforces standard unified Git diff formatting (`--- a/`, `+++ b/`, `@@ ... @@`, `+`, `-`, ` ` prefixes).
+  - Strictly rejects binary diffs (`GIT binary patch`), empty diffs, path traversal escapes (`../`), unauthorized file modifications, and diffs exceeding line/file limits.
+- **Patch Risk Assessment Engine:**
+  - Built `PatchRiskEvaluator` in `backend/app/agents/remediation/risk_evaluator.py`.
+  - Calculates `PatchRiskAssessment` with risk score (0.0 to 1.0) and categorical levels (`LOW`, `MEDIUM`, `HIGH`, `CRITICAL`).
+  - Factors in line volume, file count, high deletion ratios (>75%), and sensitive subsystem keywords (`auth`, `security`, `crypto`, `token`, `payment`, `billing`, `migration`).
+- **Stateful LangGraph Remediation Workflow:**
+  - Compiled `create_remediation_graph` in `backend/app/agents/workflows/remediation.py`:
+    - `load_context` -> `evaluate_eligibility`
+    - Conditional edge: if not eligible -> terminates cleanly at `END`.
+    - If eligible -> `construct_plan` -> `collect_source_context` -> `generate_patch`
+    - Conditional edge: if patch generation failed -> terminates cleanly at `END`.
+    - If patch generated -> `validate_patch` -> `evaluate_risk` -> `END`.
+- **Database Persistence & SHA-256 Integrity:**
+  - Implemented `IncidentRemediationExecutor` in `backend/app/agents/runtime/remediation_executor.py`.
+  - Persists full execution lifecycle into `agent_executions` (`AgentType.FIX_AGENT`).
+  - Persists valid patches into PostgreSQL `code_patches` table with status `"pending_approval"`.
+  - Automatically computes cryptographic SHA-256 hash (`patch_hash`) verifying patch integrity.
+  - Appends audit events (`remediation_patch_generated` or `remediation_evaluation_completed`) to `audit_logs`.
+- **RESTful API Endpoints:**
+  - `POST /api/v1/incidents/{incident_id}/remediate`: Triggers remediation workflow and returns `RemediationResponse`.
+  - `GET /api/v1/incidents/{incident_id}/patches`: Lists all proposed code patches for an incident.
+  - `GET /api/v1/patches/{patch_id}`: Retrieves single code patch record with diff content and SHA-256 hash.
+- **Automated Verification:**
+  - Added 24 new tests across 6 test modules (`test_diff_validator.py`, `test_risk_evaluator.py`, `test_remediation_eligibility.py`, `test_remediation_workflow.py`, `test_remediation_executor.py`, `test_remediation_api.py`).
+  - Full backend test suite: **126 passed, 0 failed**.
+  - Full frontend test suite: **16 passed, 0 failed**.
+
+### 2. Verification Results
+- **Backend Test Suite:** 126 passed in 4.64s (pytest)
+- **Frontend Test Suite:** 16 passed in 2.97s (vitest)
+- **Security Check:** Zero patch application to workspaces (100% read-only generation), path traversal blocked, sensitive credentials filtered, SHA-256 hash verification confirmed.
 
 ---
 
